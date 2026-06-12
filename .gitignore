@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Entornos virtuales (uv crea .venv)
+.venv/
+venv/
+
+# Variables de entorno y secretos
+.env
+
+# Base de datos SQLite generada (la carpeta se versiona con data/.gitkeep)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Config local de Claude Code (personal, no se comparte)
+.claude/settings.local.json
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/

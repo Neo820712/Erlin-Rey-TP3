@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv *)",
+      "Bash(python *)",
+      "Bash(py *)",
+      "Bash(uvicorn *)",
+      "Bash(curl *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(git *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git reset --hard*)",
+      "Bash(git push --force*)",
+      "Bash(git clean -fd*)",
+      "Bash(sudo *)"
+    ]
+  },
+  "env": {
+    "DATABASE_URL": "sqlite:///./data/activos.db",
+    "CORS_ORIGINS": "http://localhost:3000",
+    "PYTHONPATH": "."
+  }
+}
