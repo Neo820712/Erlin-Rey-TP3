@@ -163,3 +163,10 @@ def test_borrar_activo_borra_sus_analisis_en_cascada(client, session):
 
     session.expire_all()
     assert session.exec(select(Analisis).where(Analisis.activo_id == aid)).all() == []
+
+
+def test_ruta_inexistente_usa_el_schema_de_error_unico(client):
+    resp = client.get("/ruta-que-no-existe")
+    assert resp.status_code == 404
+    assert "message" in resp.json()
+    assert "detail" not in resp.json()

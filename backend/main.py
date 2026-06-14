@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -7,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.database import create_db, get_session
 from backend.models import (
@@ -21,7 +23,17 @@ from backend.models import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("activos")
 
-app = FastAPI(title="Dashboard de Análisis de Activos Financieros", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_db()
+    yield
+
+
+app = FastAPI(
+    title="Dashboard de Análisis de Activos Financieros",
+    version="0.1.0",
+    lifespan=lifespan,
+)
 
 _origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
@@ -30,11 +42,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def _startup():
-    create_db()
 
 
 @app.exception_handler(RequestValidationError)
@@ -50,8 +57,11 @@ def _activo_o_404(activo_id: int, session: Session) -> Activo:
     return activo
 
 
-@app.exception_handler(HTTPException)
-async def _http_exception_handler(request: Request, exc: HTTPException):
+@app.exception_handler(StarletteHTTPException)
+async def _http_exception_handler(request: Request, exc: StarletteHTTPException):
+    # Se registra en la clase base de Starlette para capturar tanto los HTTPException
+    # propios (detail dict) como los del framework (p. ej. 404 de ruta inexistente, con
+    # detail string), y normalizar todo al schema {message}.
     detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
     return JSONResponse(status_code=exc.status_code, content=detail)
 
