@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -8,7 +9,14 @@ from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
 from backend.database import create_db, get_session
-from backend.models import Activo, ActivoCreate, ActivoDetalle, Analisis, SenalesRecientes
+from backend.models import (
+    Activo,
+    ActivoCreate,
+    ActivoDetalle,
+    Analisis,
+    AnalisisCreate,
+    SenalesRecientes,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("activos")
@@ -84,3 +92,32 @@ def borrar_activo(activo_id: int, session: Session = Depends(get_session)):
     session.delete(activo)
     session.commit()
     logger.info("204 activo borrado id=%s", activo_id)
+
+
+def _ahora_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+@app.get("/activos/{activo_id}/analisis", response_model=list[Analisis])
+def listar_analisis(activo_id: int, session: Session = Depends(get_session)):
+    _activo_o_404(activo_id, session)
+    return session.exec(
+        select(Analisis)
+        .where(Analisis.activo_id == activo_id)
+        .order_by(Analisis.created_at.desc(), Analisis.id.desc())
+    ).all()
+
+
+@app.post(
+    "/activos/{activo_id}/analisis",
+    response_model=Analisis,
+    status_code=status.HTTP_201_CREATED,
+)
+def crear_analisis(activo_id: int, data: AnalisisCreate, session: Session = Depends(get_session)):
+    _activo_o_404(activo_id, session)
+    analisis = Analisis(**data.model_dump(), activo_id=activo_id, created_at=_ahora_iso())
+    session.add(analisis)
+    session.commit()
+    session.refresh(analisis)
+    logger.info("201 análisis creado id=%s activo=%s senal=%s", analisis.id, activo_id, analisis.senal)
+    return analisis

@@ -86,3 +86,43 @@ def test_borrar_activo_inexistente_devuelve_404(client):
     resp = client.delete("/activos/999")
     assert resp.status_code == 404
     assert "message" in resp.json()
+
+
+def test_crear_analisis_devuelve_201(client):
+    aid = _crear_activo(client)
+    resp = client.post(f"/activos/{aid}/analisis", json=_analisis_payload())
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["id"] is not None
+    assert body["activo_id"] == aid
+    assert body["created_at"]
+    assert body["senal"] == "compra"
+
+
+def test_listar_analisis_orden_descendente(client):
+    aid = _crear_activo(client)
+    client.post(f"/activos/{aid}/analisis", json=_analisis_payload("tecnico", "compra"))
+    client.post(f"/activos/{aid}/analisis", json=_analisis_payload("tecnico", "venta"))
+    resp = client.get(f"/activos/{aid}/analisis")
+    assert resp.status_code == 200
+    senales = [a["senal"] for a in resp.json()]
+    assert senales == ["venta", "compra"]
+
+
+def test_crear_analisis_confianza_fuera_de_rango_devuelve_400(client):
+    aid = _crear_activo(client)
+    resp = client.post(f"/activos/{aid}/analisis", json=_analisis_payload(confianza=1.5))
+    assert resp.status_code == 400
+    assert "message" in resp.json()
+
+
+def test_crear_analisis_en_activo_inexistente_devuelve_404(client):
+    resp = client.post("/activos/999/analisis", json=_analisis_payload())
+    assert resp.status_code == 404
+    assert "message" in resp.json()
+
+
+def test_listar_analisis_de_activo_inexistente_devuelve_404(client):
+    resp = client.get("/activos/999/analisis")
+    assert resp.status_code == 404
+    assert "message" in resp.json()
