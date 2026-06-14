@@ -126,3 +126,24 @@ def test_listar_analisis_de_activo_inexistente_devuelve_404(client):
     resp = client.get("/activos/999/analisis")
     assert resp.status_code == 404
     assert "message" in resp.json()
+
+
+def test_borrar_analisis_devuelve_204(client):
+    aid = _crear_activo(client)
+    anid = client.post(f"/activos/{aid}/analisis", json=_analisis_payload()).json()["id"]
+    resp = client.delete(f"/activos/{aid}/analisis/{anid}")
+    assert resp.status_code == 204
+    assert client.get(f"/activos/{aid}/analisis").json() == []
+
+
+def test_borrar_analisis_inexistente_devuelve_404(client):
+    aid = _crear_activo(client)
+    resp = client.delete(f"/activos/{aid}/analisis/999")
+    assert resp.status_code == 404
+    assert "message" in resp.json()
+
+
+def test_borrar_analisis_de_activo_inexistente_devuelve_404(client):
+    resp = client.delete("/activos/999/analisis/1")
+    assert resp.status_code == 404
+    assert "message" in resp.json()

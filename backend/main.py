@@ -121,3 +121,17 @@ def crear_analisis(activo_id: int, data: AnalisisCreate, session: Session = Depe
     session.refresh(analisis)
     logger.info("201 análisis creado id=%s activo=%s senal=%s", analisis.id, activo_id, analisis.senal)
     return analisis
+
+
+@app.delete(
+    "/activos/{activo_id}/analisis/{analisis_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def borrar_analisis(activo_id: int, analisis_id: int, session: Session = Depends(get_session)):
+    _activo_o_404(activo_id, session)
+    analisis = session.get(Analisis, analisis_id)
+    if analisis is None or analisis.activo_id != activo_id:
+        raise HTTPException(status_code=404, detail={"message": "El análisis solicitado no fue encontrado."})
+    session.delete(analisis)
+    session.commit()
+    logger.info("204 análisis borrado id=%s activo=%s", analisis_id, activo_id)
