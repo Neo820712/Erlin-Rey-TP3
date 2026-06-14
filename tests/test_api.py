@@ -147,3 +147,19 @@ def test_borrar_analisis_de_activo_inexistente_devuelve_404(client):
     resp = client.delete("/activos/999/analisis/1")
     assert resp.status_code == 404
     assert "message" in resp.json()
+
+
+def test_borrar_activo_borra_sus_analisis_en_cascada(client, session):
+    from sqlmodel import select
+    from backend.models import Analisis
+
+    aid = _crear_activo(client)
+    client.post(f"/activos/{aid}/analisis", json=_analisis_payload("tecnico", "compra"))
+    client.post(f"/activos/{aid}/analisis", json=_analisis_payload("sentimiento", "hold"))
+
+    assert len(session.exec(select(Analisis).where(Analisis.activo_id == aid)).all()) == 2
+
+    assert client.delete(f"/activos/{aid}").status_code == 204
+
+    session.expire_all()
+    assert session.exec(select(Analisis).where(Analisis.activo_id == aid)).all() == []
