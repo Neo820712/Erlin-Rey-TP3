@@ -52,7 +52,7 @@
 name = "activos-dashboard"
 version = "0.1.0"
 description = "Dashboard de análisis de activos financieros (TP3)"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
@@ -291,16 +291,40 @@ git commit -m "feat: openapi.yaml como contrato fuente de verdad"
 
 - [ ] **Step 1: Escribir `backend/models.py`**
 
+> **Nota de toolchain (decidida durante la ejecución):** SQLModel no soporta campos `Literal[...]`
+> en clases `table=True` (su mapeo de tipos hace `issubclass(type_, Enum)` y `Literal` no es una
+> clase). Por eso los enums se definen como clases `str, Enum` — el patrón idiomático de SQLModel,
+> que mapea a una columna y valida igual (400 ante valor inválido). Además se pineó Python a 3.13
+> (`.python-version` + `requires-python = ">=3.12,<3.14"`) por estabilidad.
+
 ```python
-from typing import Literal, Optional
+from enum import Enum
+from typing import Optional
 
 from sqlalchemy import Column, ForeignKey, Integer
 from sqlmodel import Field, SQLModel
 
-TipoActivo = Literal["accion", "ON"]
-Mercado = Literal["BYMA", "NYSE", "NASDAQ"]
-TipoAnalisis = Literal["tecnico", "sentimiento"]
-Senal = Literal["compra", "venta", "hold"]
+
+class TipoActivo(str, Enum):
+    accion = "accion"
+    ON = "ON"
+
+
+class Mercado(str, Enum):
+    BYMA = "BYMA"
+    NYSE = "NYSE"
+    NASDAQ = "NASDAQ"
+
+
+class TipoAnalisis(str, Enum):
+    tecnico = "tecnico"
+    sentimiento = "sentimiento"
+
+
+class Senal(str, Enum):
+    compra = "compra"
+    venta = "venta"
+    hold = "hold"
 
 
 # --- Activo ---
