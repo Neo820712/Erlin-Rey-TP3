@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 from contextlib import asynccontextmanager
@@ -180,12 +181,15 @@ def actualizar_mercado():
 
 
 _PERIODOS_VALIDOS = {"1m", "3m", "6m", "1y"}
+_TICKER_VALIDO = re.compile(r"[A-Za-z0-9.][A-Za-z0-9.\-]{0,11}")
 
 
 @app.get("/mercado/{ticker}/historico")
 def historico_mercado(ticker: str, periodo: str = "3m"):
     if periodo not in _PERIODOS_VALIDOS:
         raise HTTPException(status_code=400, detail={"message": f"Período inválido: {periodo}."})
+    if not _TICKER_VALIDO.fullmatch(ticker):
+        raise HTTPException(status_code=400, detail={"message": "Ticker inválido."})
     stdout = _correr_script("scripts.historico", ticker, periodo)
     try:
         return json.loads(stdout)

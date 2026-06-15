@@ -104,3 +104,10 @@ def test_get_historico_periodo_invalido_devuelve_400(client):
     resp = client.get("/mercado/AAPL/historico?periodo=5x")
     assert resp.status_code == 400
     assert "message" in resp.json()
+
+
+def test_get_historico_ticker_invalido_devuelve_400(client):
+    # un ticker que empieza con '-' no debe poder colarse como flag al subproceso
+    resp = client.get("/mercado/-rf/historico?periodo=3m")
+    assert resp.status_code == 400
+    assert "message" in resp.json()
