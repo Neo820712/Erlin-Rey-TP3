@@ -16,6 +16,9 @@ data/*.db
 data/*.sqlite
 data/*.sqlite3
 
+# Precios cacheados por yfinance (la carpeta se versiona con data/prices_cache/.gitkeep)
+data/prices_cache/*.csv
+
 # Config local de Claude Code (personal, no se comparte)
 .claude/settings.local.json
 

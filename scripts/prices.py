@@ -1,11 +1,16 @@
 import os
+import re
+import sys
 
 import pandas as pd
 
 CACHE_DIR = os.path.join("data", "prices_cache")
+_TICKER_VALIDO = re.compile(r"[A-Za-z0-9.\-]+")
 
 
 def _cache_path(ticker: str) -> str:
+    if not _TICKER_VALIDO.fullmatch(ticker):
+        raise ValueError(f"ticker invalido: {ticker!r}")
     return os.path.join(CACHE_DIR, f"{ticker.upper()}.csv")
 
 
@@ -47,6 +52,6 @@ def obtener_precios(ticker: str):
         red = _desde_red(ticker)
         if red is not None:
             return red
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"aviso: fallo al obtener precios de {ticker}: {e}", file=sys.stderr)
     return None, "none", None

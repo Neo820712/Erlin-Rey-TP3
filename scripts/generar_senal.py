@@ -1,7 +1,6 @@
 import json
 import os
 import sys
-import urllib.error
 import urllib.request
 
 from scripts.indicators import analizar
@@ -34,7 +33,7 @@ def generar(ticker: str, tipo: str = "tecnico") -> int:
 
     try:
         activos = _get("/activos")
-    except urllib.error.URLError:
+    except OSError:
         print(f"Error: el backend no responde en {API_BASE}. Levantar el server primero.")
         return 1
 
