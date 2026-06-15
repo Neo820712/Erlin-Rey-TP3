@@ -58,6 +58,11 @@ def _voto_mayoria(votos: list[str]) -> tuple[str, float]:
 
 
 def analizar(close: pd.Series) -> dict:
+    close = close.dropna()
+    if len(close) < 50:
+        raise ValueError(
+            f"serie de precios insuficiente: {len(close)} cierres (se requieren >= 50 para SMA50)"
+        )
     rsi_val = float(rsi(close).iloc[-1])
     macd_line, signal_line = macd(close)
     macd_val = float(macd_line.iloc[-1])

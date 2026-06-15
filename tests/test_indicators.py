@@ -51,3 +51,10 @@ def test_voto_mayoria_dos_tercios():
     senal, confianza = _voto_mayoria(["venta", "venta", "compra"])
     assert senal == "venta"
     assert confianza == 0.67
+
+
+def test_analizar_serie_corta_falla():
+    import pytest
+    s = pd.Series(range(1, 30), dtype=float)
+    with pytest.raises(ValueError):
+        analizar(s)
