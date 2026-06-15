@@ -28,3 +28,31 @@ def test_mercado_cedear_fundamentales_opcionales(session):
     session.commit()
     session.refresh(fila)
     assert fila.pe is None and fila.market_cap is None and fila.w52_high is None
+
+
+def _sembrar_fila(session, ticker="AAPL", actualizado="2026-06-15T12:00:00Z"):
+    from backend.models import MercadoCedear
+    fila = MercadoCedear(
+        ticker_byma=ticker, ticker_us=ticker, nombre=f"{ticker} Inc.",
+        precio_usd=100.0, var_pct=1.0, volumen=1000, rsi=50.0, senal="hold",
+        actualizado_en=actualizado,
+    )
+    session.add(fila)
+    session.commit()
+    return fila
+
+
+def test_get_mercado_vacio(client):
+    resp = client.get("/mercado/cedears")
+    assert resp.status_code == 200
+    assert resp.json() == {"cedears": [], "actualizado_en": None}
+
+
+def test_get_mercado_con_filas(client, session):
+    _sembrar_fila(session, "AAPL")
+    _sembrar_fila(session, "MSFT")
+    resp = client.get("/mercado/cedears")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert {c["ticker_byma"] for c in body["cedears"]} == {"AAPL", "MSFT"}
+    assert body["actualizado_en"] == "2026-06-15T12:00:00Z"

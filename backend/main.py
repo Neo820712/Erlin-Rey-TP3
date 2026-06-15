@@ -17,6 +17,7 @@ from backend.models import (
     ActivoDetalle,
     Analisis,
     AnalisisCreate,
+    MercadoCedear,
     SenalesRecientes,
 )
 
@@ -145,3 +146,10 @@ def borrar_analisis(activo_id: int, analisis_id: int, session: Session = Depends
     session.delete(analisis)
     session.commit()
     logger.info("204 análisis borrado id=%s activo=%s", analisis_id, activo_id)
+
+
+@app.get("/mercado/cedears")
+def listar_mercado(session: Session = Depends(get_session)):
+    filas = session.exec(select(MercadoCedear)).all()
+    actualizado_en = filas[0].actualizado_en if filas else None
+    return {"cedears": filas, "actualizado_en": actualizado_en}
