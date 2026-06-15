@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard de Análisis de Activos</title>
+  <!-- lightweight-charts v5 (TradingView), vanilla, sin build. Pineado para reproducibilidad.
+       PENDIENTE: agregar integrity="sha384-..." (ver plan, sección Task 12) cuando se pueda
+       calcular el hash con acceso de red. -->
+  <script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"
+          crossorigin="anonymous"></script>
   <style>
     :root {
       --color-bg:           #f3f6fb;
@@ -27,6 +32,9 @@
 
       --space-sm: 8px;  --space-md: 16px;  --space-lg: 24px;
       --radius:   8px;
+
+      --chart-sma20: #4A90D9;
+      --chart-sma50: #F5A623;
     }
 
     * { box-sizing: border-box; }
@@ -100,6 +108,7 @@
     .pill.compra { background: var(--bg-compra); color: var(--color-compra); }
     .pill.venta  { background: var(--bg-venta);  color: var(--color-venta); }
     .pill.hold   { background: var(--bg-hold);   color: #5a4500; }
+    .pill.sin    { background: var(--bg-sin-senal); color: var(--color-text-muted); }
     .fecha { color: var(--color-text-muted); }
     .resumen { color: var(--color-text); margin-top: 2px; }
 
@@ -107,6 +116,46 @@
     .estado.error { background: var(--bg-venta); color: var(--color-venta); }
     .estado.loading { background: var(--bg-sin-senal); color: var(--color-text-muted); }
     .vacio { color: var(--color-text-muted); }
+
+    /* Autocompletado */
+    .buscador { position: relative; }
+    .dropdown {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius); max-height: 240px; overflow-y: auto; margin-top: 2px;
+    }
+    .dropdown .opcion { padding: var(--space-sm); cursor: pointer; font-size: 0.85rem; }
+    .dropdown .opcion:hover, .dropdown .opcion.activa { background: var(--color-bg); }
+    .dropdown .opcion .tk { font-weight: 700; color: var(--color-primary-dark); margin-right: 6px; }
+
+    /* Tabla de mercado */
+    .toolbar { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-sm); }
+    .toolbar .actualizado { color: var(--color-text-muted); font-size: 0.8rem; margin-left: auto; }
+    .tabla-wrap { overflow-x: auto; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); }
+    table.mercado { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+    table.mercado th, table.mercado td { padding: var(--space-sm); text-align: right; white-space: nowrap; border-bottom: 1px solid var(--color-border); }
+    table.mercado th:nth-child(1), table.mercado td:nth-child(1),
+    table.mercado th:nth-child(2), table.mercado td:nth-child(2) { text-align: left; }
+    table.mercado th { cursor: pointer; color: var(--color-primary-dark); user-select: none; }
+    table.mercado tbody tr { cursor: pointer; }
+    table.mercado tbody tr:hover { background: var(--color-bg); }
+    .var-pos { color: var(--color-compra); }
+    .var-neg { color: var(--color-venta); }
+    .rsi-bajo { color: var(--color-compra); }
+    .rsi-alto { color: var(--color-venta); }
+
+    /* Vista de detalle */
+    .volver { background: none; color: var(--color-primary); padding: 0; margin-bottom: var(--space-md); }
+    .volver:hover { background: none; text-decoration: underline; }
+    .metricas { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-lg); }
+    .metricas .panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-md); }
+    .metricas h3 { margin: 0 0 var(--space-sm); color: var(--color-primary-dark); font-size: 0.9rem; }
+    .metricas .fila { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--color-border); font-size: 0.85rem; }
+    .periodos { display: flex; gap: var(--space-sm); margin-bottom: var(--space-sm); }
+    .periodos button.activo { background: var(--color-primary-dark); }
+    #chart-velas, #chart-rsi, #chart-macd { width: 100%; }
+    #chart-velas { height: 300px; } #chart-rsi { height: 90px; } #chart-macd { height: 90px; }
+
     footer { text-align: center; color: var(--color-text-muted); font-size: 0.8rem; padding: var(--space-lg); }
   </style>
 </head>
@@ -121,9 +170,11 @@
     <section id="alta-activo">
       <h2>Agregar activo</h2>
       <form id="form-activo">
-        <div class="campo">
-          <label for="f-ticker">Ticker</label>
-          <input id="f-ticker" name="ticker" required maxlength="12" autocomplete="off">
+        <div class="campo buscador">
+          <label for="f-busqueda">Buscar (ticker o empresa)</label>
+          <input id="f-busqueda" autocomplete="off" placeholder="apple, AAPL…">
+          <div id="dropdown"></div>
+          <input id="f-ticker" name="ticker" type="hidden" required>
         </div>
         <div class="campo">
           <label for="f-nombre">Nombre</label>
@@ -148,9 +199,33 @@
       </form>
     </section>
 
+    <section id="mercado">
+      <h2>Mercado (CEDEARs)</h2>
+      <div class="toolbar">
+        <input id="m-filtro" placeholder="🔍 Filtrar por ticker o empresa…" autocomplete="off">
+        <button id="m-actualizar">↻ Actualizar</button>
+        <span class="actualizado" id="m-actualizado"></span>
+      </div>
+      <div class="tabla-wrap"><table class="mercado" id="tabla-mercado"></table></div>
+    </section>
+
     <section id="lista-activos">
       <h2>Activos monitoreados</h2>
       <div class="grid" id="grid"></div>
+    </section>
+
+    <section id="detalle" style="display:none;">
+      <button class="volver" id="btn-volver">← Volver</button>
+      <h2 id="detalle-titulo"></h2>
+      <div class="metricas">
+        <div class="panel"><h3>Técnico</h3><div id="panel-tecnico"></div></div>
+        <div class="panel"><h3>Fundamental</h3><div id="panel-fundamental"></div></div>
+      </div>
+      <div class="periodos" id="periodos"></div>
+      <div id="chart-velas"></div>
+      <div id="chart-rsi"></div>
+      <div id="chart-macd"></div>
+      <div id="detalle-historial"></div>
     </section>
   </main>
   <footer>
@@ -161,9 +236,17 @@
     const API_BASE = 'http://localhost:8000';
 
     const state = {
-      activos: [],            // ActivoDetalle (con senales_recientes)
-      selectedActivoId: null, // card expandida, o null
-      analisis: [],           // historial del activo expandido
+      view: 'dashboard',          // 'dashboard' | 'detalle'
+      activos: [],                // ActivoDetalle (con senales_recientes)
+      cedears: [],                // data/cedears.json (autocompletado)
+      mercado: [],                // filas de GET /mercado/cedears
+      mercadoActualizado: null,   // timestamp
+      mercadoSort: { col: null, dir: 'asc' },
+      mercadoFiltro: '',
+      detalle: null,              // payload de /historico del ticker abierto
+      detalleTicker: null,
+      detallePeriodo: '3m',
+      seleccion: null,            // entrada de cedears elegida en el autocompletado
       loading: false,
       error: null,
     };
@@ -177,6 +260,21 @@
     function claseSenal(senal) {
       // whitelist: la clase siempre es un valor conocido (no se interpola dato crudo en class=)
       return ['compra', 'venta', 'hold'].includes(senal) ? senal : 'sin';
+    }
+    function fmtNum(v, dec = 2) {
+      return v == null ? '—' : Number(v).toLocaleString('es-AR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    }
+    function fmtAbrev(v) {
+      if (v == null) return '—';
+      const abs = Math.abs(v);
+      if (abs >= 1e12) return (v / 1e12).toFixed(1) + 'T';
+      if (abs >= 1e9) return (v / 1e9).toFixed(1) + 'B';
+      if (abs >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+      if (abs >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+      return String(v);
+    }
+    function getCssVar(nombre) {
+      return getComputedStyle(document.documentElement).getPropertyValue(nombre).trim();
     }
 
     // --- fetch helpers (todos manejan loading/error en quien los llama) ---
@@ -203,6 +301,38 @@
       }
     }
 
+    async function cargarCedears() {
+      try {
+        const resp = await fetch('cedears.json');
+        state.cedears = await resp.json();
+      } catch (e) {
+        state.cedears = [];  // el autocompletado queda vacío pero el alta manual sigue funcionando
+      }
+    }
+
+    async function cargarMercado() {
+      try {
+        const data = await api('/mercado/cedears');
+        state.mercado = data.cedears || [];
+        state.mercadoActualizado = data.actualizado_en;
+      } catch (e) {
+        state.error = `No se pudo cargar el mercado: ${e.message}`;
+      }
+      render();
+    }
+
+    async function actualizarMercado() {
+      state.loading = true; state.error = null; render();
+      try {
+        await api('/mercado/actualizar', { method: 'POST' });
+        await cargarMercado();   // refetch obligatorio: POST no devuelve las filas
+      } catch (e) {
+        state.error = `No se pudo actualizar el mercado: ${e.message}`;
+      } finally {
+        state.loading = false; render();
+      }
+    }
+
     async function altaActivo(datos) {
       state.loading = true; state.error = null; render();
       try {
@@ -212,6 +342,8 @@
           body: JSON.stringify(datos),
         });
         document.getElementById('form-activo').reset();
+        document.getElementById('f-busqueda').value = '';
+        state.seleccion = null;
         await cargarActivos();
       } catch (e) {
         state.error = `No se pudo agregar el activo: ${e.message}`;
@@ -219,22 +351,52 @@
       }
     }
 
-    async function cargarAnalisis(activoId) {
-      state.loading = true; state.error = null; render();
-      try {
-        state.analisis = await api(`/activos/${activoId}/analisis`);
-        state.selectedActivoId = activoId;
-      } catch (e) {
-        state.error = `No se pudo cargar el historial: ${e.message}`;
-      } finally {
-        state.loading = false; render();
+    // --- autocompletado ---
+    function filtrarCedears(texto) {
+      const q = texto.trim().toLowerCase();
+      if (!q) return [];
+      return state.cedears.filter((c) =>
+        c.ticker_byma.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q)
+      ).slice(0, 8);
+    }
+
+    function renderDropdown(texto) {
+      const cont = document.getElementById('dropdown');
+      cont.innerHTML = '';
+      const opciones = filtrarCedears(texto);
+      cont.className = opciones.length ? 'dropdown' : '';
+      for (const c of opciones) {
+        const div = document.createElement('div');
+        div.className = 'opcion';
+        const tk = document.createElement('span');
+        tk.className = 'tk';
+        tk.textContent = c.ticker_byma;            // textContent: a prueba de XSS
+        div.appendChild(tk);
+        div.appendChild(document.createTextNode(c.nombre));
+        div.addEventListener('click', () => seleccionarCedear(c));
+        cont.appendChild(div);
       }
+    }
+
+    function seleccionarCedear(c) {
+      const f = document.getElementById('form-activo');
+      document.getElementById('f-busqueda').value = `${c.ticker_byma} — ${c.nombre}`;
+      f.ticker.value = c.ticker_byma;
+      f.nombre.value = c.nombre;
+      f.tipo.value = c.tipo;
+      f.mercado.value = c.mercado;
+      state.seleccion = c;
+      const d = document.getElementById('dropdown');
+      d.innerHTML = ''; d.className = '';
     }
 
     // --- render (única función que toca el DOM) ---
     function render() {
-      document.getElementById('contador').textContent =
-        state.activos.length ? `${state.activos.length} activos` : '';
+      const enDetalle = state.view === 'detalle';
+      document.getElementById('detalle').style.display = enDetalle ? '' : 'none';
+      ['alta-activo', 'mercado', 'lista-activos'].forEach((id) => {
+        document.getElementById(id).style.display = enDetalle ? 'none' : '';
+      });
 
       const estado = document.getElementById('estado-global');
       if (state.error) {
@@ -245,26 +407,28 @@
         estado.innerHTML = '';
       }
 
+      if (enDetalle) { renderDetalle(); return; }
+
+      document.getElementById('contador').textContent =
+        state.activos.length ? `${state.activos.length} activos` : '';
       document.getElementById('btn-alta').disabled = state.loading;
+
+      renderMercado();
+      const btnAct = document.getElementById('m-actualizar');
+      if (btnAct) {
+        btnAct.disabled = state.loading;
+        btnAct.textContent = state.loading ? 'Cargando…' : '↻ Actualizar';
+      }
 
       const grid = document.getElementById('grid');
       if (!state.activos.length && !state.loading) {
         grid.innerHTML = `<p class="vacio">No hay activos. Agregá uno con el formulario.</p>`;
-        return;
-      }
-      grid.innerHTML = state.activos.map(cardHTML).join('');
-
-      // listeners de cada card (no inline onclick para evitar acoplar markup y datos)
-      grid.querySelectorAll('.card').forEach((el) => {
-        el.addEventListener('click', () => {
-          const id = Number(el.dataset.id);
-          if (state.selectedActivoId === id) {
-            state.selectedActivoId = null; state.analisis = []; render();
-          } else {
-            cargarAnalisis(id);
-          }
+      } else {
+        grid.innerHTML = state.activos.map(cardHTML).join('');
+        grid.querySelectorAll('.card').forEach((el) => {
+          el.addEventListener('click', () => abrirDetalle(el.dataset.ticker));
         });
-      });
+      }
     }
 
     function badgeHTML(etiqueta, senal) {
@@ -275,10 +439,8 @@
 
     function cardHTML(activo) {
       const sr = activo.senales_recientes || {};
-      const expandida = state.selectedActivoId === activo.id;
-      const historial = expandida ? historialHTML() : '';
       return `
-        <div class="card" data-id="${activo.id}">
+        <div class="card" data-id="${activo.id}" data-ticker="${esc(activo.ticker)}">
           <div class="card-top">
             <div>
               <div class="ticker">${esc(activo.ticker)}</div>
@@ -290,26 +452,268 @@
             ${badgeHTML('Técnico', sr.tecnico)}
             ${badgeHTML('Sentim.', sr.sentimiento)}
           </div>
-          ${historial}
         </div>`;
     }
 
-    function historialHTML() {
-      if (state.loading) return `<div class="historial">Cargando historial…</div>`;
-      if (!state.analisis.length) return `<div class="historial vacio">Sin análisis todavía.</div>`;
-      const items = state.analisis.map((a) => {
-        const pct = Math.round((a.confianza || 0) * 100);
-        return `
-          <div class="analisis-item">
-            <div class="linea1">
-              <span class="pill ${claseSenal(a.senal)}">${esc(a.senal)}</span>
-              <span>${esc(a.tipo)} · ${pct}%</span>
-              <span class="fecha">${esc(a.created_at)}</span>
-            </div>
-            <div class="resumen">${esc(a.resumen)}</div>
-          </div>`;
-      }).join('');
-      return `<div class="historial">${items}</div>`;
+    // --- tabla de mercado ---
+    const COLS_MERCADO = [
+      { key: 'ticker_byma', label: 'Ticker' },
+      { key: 'nombre', label: 'Empresa' },
+      { key: 'precio_usd', label: 'Precio (USD)' },
+      { key: 'var_pct', label: 'Var %' },
+      { key: 'volumen', label: 'Volumen' },
+      { key: 'rsi', label: 'RSI(14)' },
+      { key: 'senal', label: 'Señal' },
+      { key: 'pe', label: 'P/E' },
+      { key: 'market_cap', label: 'Market Cap' },
+    ];
+
+    function filasMercadoVisibles() {
+      const q = state.mercadoFiltro.trim().toLowerCase();
+      let filas = state.mercado.filter((c) =>
+        !q || c.ticker_byma.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q));
+      const { col, dir } = state.mercadoSort;
+      if (col) {
+        filas = [...filas].sort((a, b) => {
+          const va = a[col], vb = b[col];
+          if (va == null) return 1;
+          if (vb == null) return -1;
+          const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+          return dir === 'asc' ? cmp : -cmp;
+        });
+      }
+      return filas;
+    }
+
+    function celdaMercado(c, key) {
+      if (key === 'var_pct') {
+        if (c.var_pct == null) return { texto: '—', clase: '' };
+        const flecha = c.var_pct >= 0 ? '▲' : '▼';
+        return { texto: `${flecha} ${fmtNum(c.var_pct)}%`, clase: c.var_pct >= 0 ? 'var-pos' : 'var-neg' };
+      }
+      if (key === 'rsi') {
+        if (c.rsi == null) return { texto: '—', clase: '' };
+        const clase = c.rsi < 30 ? 'rsi-bajo' : c.rsi > 70 ? 'rsi-alto' : '';
+        return { texto: fmtNum(c.rsi, 1), clase };
+      }
+      if (key === 'senal') return { texto: c.senal || '—', clase: '', pill: true };
+      if (key === 'precio_usd') return { texto: fmtNum(c.precio_usd), clase: '' };
+      if (key === 'pe') return { texto: fmtNum(c.pe), clase: '' };
+      if (key === 'volumen') return { texto: fmtAbrev(c.volumen), clase: '' };
+      if (key === 'market_cap') return { texto: fmtAbrev(c.market_cap), clase: '' };
+      return { texto: c[key] == null ? '—' : String(c[key]), clase: '' };
+    }
+
+    function renderMercado() {
+      const tabla = document.getElementById('tabla-mercado');
+      if (!tabla) return;
+      document.getElementById('m-actualizado').textContent =
+        state.mercadoActualizado ? `Última actualización: ${state.mercadoActualizado}` : '';
+
+      const filas = filasMercadoVisibles();
+      const thead = document.createElement('thead');
+      const trh = document.createElement('tr');
+      for (const col of COLS_MERCADO) {
+        const th = document.createElement('th');
+        let marca = '';
+        if (state.mercadoSort.col === col.key) marca = state.mercadoSort.dir === 'asc' ? ' ↑' : ' ↓';
+        th.textContent = col.label + marca;
+        th.addEventListener('click', () => {
+          if (state.mercadoSort.col === col.key) {
+            state.mercadoSort.dir = state.mercadoSort.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            state.mercadoSort = { col: col.key, dir: 'asc' };
+          }
+          render();
+        });
+        trh.appendChild(th);
+      }
+      thead.appendChild(trh);
+
+      const tbody = document.createElement('tbody');
+      if (!filas.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = COLS_MERCADO.length;
+        td.style.textAlign = 'center';
+        td.className = 'vacio';
+        td.textContent = state.mercado.length
+          ? 'Sin resultados para el filtro.'
+          : 'Presioná Actualizar para cargar los datos de mercado.';
+        tr.appendChild(td); tbody.appendChild(tr);
+      } else {
+        for (const c of filas) {
+          const tr = document.createElement('tr');
+          tr.addEventListener('click', () => abrirDetalle(c.ticker_byma));
+          for (const col of COLS_MERCADO) {
+            const td = document.createElement('td');
+            const { texto, clase, pill } = celdaMercado(c, col.key);
+            if (pill && c.senal) {
+              const span = document.createElement('span');
+              span.className = `pill ${claseSenal(c.senal)}`;
+              span.textContent = c.senal;
+              td.appendChild(span);
+            } else {
+              td.textContent = texto;
+              if (clase) td.className = clase;
+            }
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        }
+      }
+      tabla.innerHTML = '';
+      tabla.appendChild(thead);
+      tabla.appendChild(tbody);
+    }
+
+    // --- vista de detalle ---
+    async function abrirDetalle(ticker, periodo = '3m') {
+      state.view = 'detalle';
+      state.detalleTicker = ticker;
+      state.detallePeriodo = periodo;
+      state.detalle = null;
+      state.loading = true; state.error = null; render();
+      try {
+        state.detalle = await api(`/mercado/${encodeURIComponent(ticker)}/historico?periodo=${periodo}`);
+      } catch (e) {
+        state.error = `No se pudo cargar el histórico de ${ticker}: ${e.message}`;
+      } finally {
+        state.loading = false; render();
+      }
+    }
+
+    function volverDashboard() {
+      state.view = 'dashboard';
+      state.detalle = null; state.detalleTicker = null;
+      render();
+    }
+
+    function filaMetrica(label, valor) {
+      const div = document.createElement('div');
+      div.className = 'fila';
+      const l = document.createElement('span'); l.textContent = label;
+      const v = document.createElement('span'); v.textContent = valor;
+      div.appendChild(l); div.appendChild(v);
+      return div;
+    }
+
+    function renderPaneles() {
+      const ind = (state.detalle && state.detalle.indicadores) || {};
+      const m = state.mercado.find((c) => c.ticker_byma === state.detalleTicker) || {};
+
+      const tec = document.getElementById('panel-tecnico');
+      tec.innerHTML = '';
+      tec.appendChild(filaMetrica('RSI (14)', ind.rsi != null ? fmtNum(ind.rsi, 1) : '—'));
+      tec.appendChild(filaMetrica('MACD', ind.macd != null ? `${fmtNum(ind.macd)} vs ${fmtNum(ind.signal)}` : '—'));
+      tec.appendChild(filaMetrica('SMA 20', ind.sma20 != null ? fmtNum(ind.sma20) : '—'));
+      tec.appendChild(filaMetrica('SMA 50', ind.sma50 != null ? fmtNum(ind.sma50) : '—'));
+      tec.appendChild(filaMetrica('Señal', ind.senal || '—'));
+      tec.appendChild(filaMetrica('Confianza', ind.confianza != null ? `${Math.round(ind.confianza * 100)}%` : '—'));
+
+      const fun = document.getElementById('panel-fundamental');
+      fun.innerHTML = '';
+      fun.appendChild(filaMetrica('P/E', fmtNum(m.pe)));
+      fun.appendChild(filaMetrica('EPS (TTM)', fmtNum(m.eps)));
+      fun.appendChild(filaMetrica('Market Cap', fmtAbrev(m.market_cap)));
+      fun.appendChild(filaMetrica('Volumen', fmtAbrev(m.volumen)));
+      fun.appendChild(filaMetrica('Var % (día)', m.var_pct != null ? `${fmtNum(m.var_pct)}%` : '—'));
+      fun.appendChild(filaMetrica('52w High', fmtNum(m.w52_high)));
+      fun.appendChild(filaMetrica('52w Low', fmtNum(m.w52_low)));
+    }
+
+    function renderPeriodos() {
+      const cont = document.getElementById('periodos');
+      cont.innerHTML = '';
+      for (const p of ['1m', '3m', '6m', '1y']) {
+        const b = document.createElement('button');
+        b.textContent = p.toUpperCase();
+        if (p === state.detallePeriodo) b.className = 'activo';
+        b.addEventListener('click', () => abrirDetalle(state.detalleTicker, p));
+        cont.appendChild(b);
+      }
+    }
+
+    async function renderHistorialDetalle() {
+      const cont = document.getElementById('detalle-historial');
+      cont.innerHTML = '';
+      const activo = state.activos.find((a) => a.ticker === state.detalleTicker);
+      const h = document.createElement('h3'); h.textContent = 'Historial de análisis';
+      cont.appendChild(h);
+      if (!activo) {
+        const p = document.createElement('p'); p.className = 'vacio';
+        p.textContent = 'Este ticker no está en monitoreo. Agregalo desde el formulario para guardar análisis.';
+        cont.appendChild(p);
+        return;
+      }
+      try {
+        const lista = await api(`/activos/${activo.id}/analisis`);
+        if (!lista.length) {
+          const p = document.createElement('p'); p.className = 'vacio'; p.textContent = 'Sin análisis todavía.';
+          cont.appendChild(p); return;
+        }
+        for (const a of lista) {
+          const item = document.createElement('div'); item.className = 'analisis-item';
+          const l1 = document.createElement('div'); l1.className = 'linea1';
+          const pill = document.createElement('span'); pill.className = `pill ${claseSenal(a.senal)}`; pill.textContent = a.senal;
+          const meta = document.createElement('span'); meta.textContent = `${a.tipo} · ${Math.round((a.confianza || 0) * 100)}%`;
+          const fecha = document.createElement('span'); fecha.className = 'fecha'; fecha.textContent = a.created_at;
+          l1.append(pill, meta, fecha);
+          const res = document.createElement('div'); res.className = 'resumen'; res.textContent = a.resumen;
+          item.append(l1, res); cont.appendChild(item);
+        }
+      } catch (e) {
+        const p = document.createElement('p'); p.className = 'estado error'; p.textContent = e.message;
+        cont.appendChild(p);
+      }
+    }
+
+    function renderDetalle() {
+      document.getElementById('detalle-titulo').textContent = state.detalleTicker || '';
+      renderPaneles();
+      renderPeriodos();
+      renderHistorialDetalle();
+      dibujarGrafico();
+    }
+
+    function _puntos(series, ohlc) {
+      // empareja cada valor con su fecha, descartando nulls (lightweight-charts no acepta null)
+      return series.map((v, i) => (v == null ? null : { time: ohlc[i].time, value: v })).filter(Boolean);
+    }
+
+    function dibujarGrafico() {
+      const cont = document.getElementById('chart-velas');
+      const rsiCont = document.getElementById('chart-rsi');
+      const macdCont = document.getElementById('chart-macd');
+      cont.innerHTML = ''; rsiCont.innerHTML = ''; macdCont.innerHTML = '';
+      if (!state.detalle || !state.detalle.ohlc || !window.LightweightCharts) return;
+      const { ohlc, series } = state.detalle;
+
+      const opts = { layout: { background: { color: '#fff' }, textColor: '#1a1a1a' }, height: cont.clientHeight,
+        grid: { vertLines: { color: '#eef2f7' }, horzLines: { color: '#eef2f7' } } };
+
+      const chart = LightweightCharts.createChart(cont, opts);
+      const velas = chart.addCandlestickSeries({ upColor: '#1e7d34', downColor: '#c62828', borderVisible: false,
+        wickUpColor: '#1e7d34', wickDownColor: '#c62828' });
+      velas.setData(ohlc);
+      chart.addLineSeries({ color: getCssVar('--chart-sma20'), lineWidth: 2 }).setData(_puntos(series.sma20, ohlc));
+      chart.addLineSeries({ color: getCssVar('--chart-sma50'), lineWidth: 2 }).setData(_puntos(series.sma50, ohlc));
+      chart.timeScale().fitContent();
+
+      const rsiChart = LightweightCharts.createChart(rsiCont, { ...opts, height: rsiCont.clientHeight });
+      const rsiLine = rsiChart.addLineSeries({ color: '#0068b5', lineWidth: 1 });
+      rsiLine.setData(_puntos(series.rsi, ohlc));
+      rsiLine.createPriceLine({ price: 70, color: '#c62828', lineStyle: 2, lineWidth: 1 });
+      rsiLine.createPriceLine({ price: 30, color: '#1e7d34', lineStyle: 2, lineWidth: 1 });
+      rsiChart.timeScale().fitContent();
+
+      const macdChart = LightweightCharts.createChart(macdCont, { ...opts, height: macdCont.clientHeight });
+      macdChart.addHistogramSeries({ color: '#9aa5b1' }).setData(
+        series.hist.map((v, i) => (v == null ? null : { time: ohlc[i].time, value: v,
+          color: v >= 0 ? '#1e7d34' : '#c62828' })).filter(Boolean));
+      macdChart.addLineSeries({ color: getCssVar('--chart-sma20'), lineWidth: 1 }).setData(_puntos(series.macd, ohlc));
+      macdChart.addLineSeries({ color: getCssVar('--chart-sma50'), lineWidth: 1 }).setData(_puntos(series.signal, ohlc));
+      macdChart.timeScale().fitContent();
     }
 
     // --- eventos ---
@@ -324,7 +728,26 @@
       });
     });
 
-    cargarActivos();
+    document.getElementById('f-busqueda').addEventListener('input', (ev) => {
+      renderDropdown(ev.target.value);
+    });
+    document.addEventListener('click', (ev) => {
+      if (!ev.target.closest('.buscador')) {
+        const d = document.getElementById('dropdown');
+        d.innerHTML = ''; d.className = '';
+      }
+    });
+
+    document.getElementById('m-actualizar').addEventListener('click', actualizarMercado);
+    document.getElementById('m-filtro').addEventListener('input', (ev) => {
+      state.mercadoFiltro = ev.target.value; render();
+    });
+    document.getElementById('btn-volver').addEventListener('click', volverDashboard);
+
+    async function init() {
+      await Promise.all([cargarActivos(), cargarCedears(), cargarMercado()]);
+    }
+    init();
   </script>
 </body>
 </html>
