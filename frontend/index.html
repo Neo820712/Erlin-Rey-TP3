@@ -175,7 +175,8 @@
       return div.innerHTML;
     }
     function claseSenal(senal) {
-      return senal ? senal : 'sin';
+      // whitelist: la clase siempre es un valor conocido (no se interpola dato crudo en class=)
+      return ['compra', 'venta', 'hold'].includes(senal) ? senal : 'sin';
     }
 
     // --- fetch helpers (todos manejan loading/error en quien los llama) ---
