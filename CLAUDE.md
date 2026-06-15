@@ -28,6 +28,9 @@ python -m http.server 3000
 # Poblar la base con activos y análisis de ejemplo (idempotente)
 uv run python scripts/seed.py
 
+# Descargar/actualizar el snapshot de mercado (offline, antes de la demo)
+uv run python -m scripts.mercado
+
 # Tests
 uv run pytest
 ```
@@ -60,14 +63,21 @@ scripts/                 capa de análisis (todo lo que toca red/cálculo)
   indicators.py          cálculo puro RSI/MACD/SMA (sin red, testeable)
   generar_senal.py       orquesta: prices -> indicators -> POST /activos/{id}/analisis
   seed.py                inserta activos + análisis (cascada caché/red/hardcode)
+  mercado.py             descarga paralela de CEDEARs -> persiste en mercado_cedears
+  historico.py           OHLC + indicadores para el gráfico (JSON por stdout)
 frontend/
   index.html             dashboard single-file (servido en :3000)
 tests/
   test_api.py            los 7 endpoints
   test_indicators.py     cálculo de indicadores
+  test_mercado.py        endpoints /mercado y modelo MercadoCedear
+  test_prices.py         obtener_ohlc (caché OHLCV)
+  test_historico.py      armado del JSON de histórico (puro)
+  test_mercado_script.py upsert y armado de filas de mercado.py
 data/
   activos.db             base SQLite (en .gitignore)
   prices_cache/          CSV de precios cacheados (en .gitignore)
+  cedears.json           lista curada de CEDEARs US (autocompletado + tabla de mercado)
 ```
 
 ## Reglas de arquitectura
@@ -81,6 +91,10 @@ data/
   se **sirve** en ese puerto, no se abre con `file://`.
 - **El backend no toca el dominio financiero externo.** Nada de yfinance ni pandas en `backend/`;
   todo lo que descarga precios o calcula indicadores vive en `scripts/`. El backend es solo CRUD.
+- **El backend no descarga datos de mercado:** `POST /mercado/actualizar` y
+  `GET /mercado/{ticker}/historico` lanzan `scripts/mercado.py` e `scripts/historico.py` como
+  subprocesos (stdout JSON). La tabla `mercado_cedears` guarda el último snapshot (precios en USD,
+  desde el ticker US). El histórico valida el `ticker` antes de pasarlo al subproceso.
 - **Foreign key con borrado en cascada.** SQLite no aplica FK por defecto: el engine emite
   `PRAGMA foreign_keys=ON` por conexión. Borrar un activo borra sus análisis.
 
