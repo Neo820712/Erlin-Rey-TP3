@@ -74,3 +74,30 @@ class SenalesRecientes(SQLModel):
 class ActivoDetalle(ActivoBase):
     id: int
     senales_recientes: SenalesRecientes
+
+
+# --- MercadoCedear ---
+class MercadoCedearBase(SQLModel):
+    ticker_byma: str
+    ticker_us: str
+    nombre: str
+    precio_usd: Optional[float] = None
+    var_pct: Optional[float] = None
+    volumen: Optional[int] = None
+    rsi: Optional[float] = None
+    senal: Optional[Senal] = None
+    pe: Optional[float] = None
+    eps: Optional[float] = None
+    market_cap: Optional[int] = None
+    w52_high: Optional[float] = None
+    w52_low: Optional[float] = None
+    actualizado_en: str
+
+
+class MercadoCedearCreate(MercadoCedearBase):
+    pass
+
+
+class MercadoCedear(MercadoCedearBase, table=True):
+    __tablename__ = "mercado_cedears"
+    id: Optional[int] = Field(default=None, primary_key=True)
