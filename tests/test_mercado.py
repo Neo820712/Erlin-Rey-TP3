@@ -1,3 +1,7 @@
+import json
+import subprocess
+
+
 def test_mercado_cedear_roundtrip(session):
     from backend.models import MercadoCedear
 
@@ -56,3 +60,47 @@ def test_get_mercado_con_filas(client, session):
     body = resp.json()
     assert {c["ticker_byma"] for c in body["cedears"]} == {"AAPL", "MSFT"}
     assert body["actualizado_en"] == "2026-06-15T12:00:00Z"
+
+
+def test_post_actualizar_devuelve_resumen(client, monkeypatch):
+    salida = json.dumps({"actualizados": 30, "actualizado_en": "2026-06-15T12:00:00Z"})
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout=salida, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    resp = client.post("/mercado/actualizar")
+    assert resp.status_code == 200
+    assert resp.json() == {"actualizados": 30, "actualizado_en": "2026-06-15T12:00:00Z"}
+
+
+def test_post_actualizar_falla_devuelve_500(client, monkeypatch):
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, returncode=1, stdout="", stderr="boom")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    resp = client.post("/mercado/actualizar")
+    assert resp.status_code == 500
+    assert "message" in resp.json()
+
+
+def test_get_historico_passthrough(client, monkeypatch):
+    payload = {
+        "ohlc": [{"time": "2026-01-02", "open": 1, "high": 2, "low": 0.5, "close": 1.5}],
+        "series": {"sma20": [None], "sma50": [None], "rsi": [None], "macd": [None], "signal": [None], "hist": [None]},
+        "indicadores": {"rsi": 44.1, "macd": 2.3, "signal": 5.8, "sma20": 1.0, "sma50": 1.0, "senal": "hold", "confianza": 0.33},
+    }
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout=json.dumps(payload), stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    resp = client.get("/mercado/AAPL/historico?periodo=3m")
+    assert resp.status_code == 200
+    assert resp.json() == payload
+
+
+def test_get_historico_periodo_invalido_devuelve_400(client):
+    resp = client.get("/mercado/AAPL/historico?periodo=5x")
+    assert resp.status_code == 400
+    assert "message" in resp.json()
