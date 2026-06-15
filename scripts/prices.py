@@ -18,8 +18,12 @@ def _desde_cache(ticker: str):
     path = _cache_path(ticker)
     if not os.path.exists(path):
         return None
-    df = pd.read_csv(path, parse_dates=["Date"]).set_index("Date")
-    if df.empty or "Close" not in df.columns:
+    df = pd.read_csv(path)
+    if df.empty or "Close" not in df.columns or "Date" not in df.columns:
+        return None
+    df["Date"] = pd.to_datetime(df["Date"], utc=True, errors="coerce")
+    df = df.dropna(subset=["Date"]).set_index("Date")
+    if df.empty:
         return None
     fecha = df.index[-1].strftime("%Y-%m-%d")
     return df["Close"], "cache", fecha
