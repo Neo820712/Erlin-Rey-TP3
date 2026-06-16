@@ -156,6 +156,22 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /mercado/{ticker}/fundamentales:
+    get:
+      summary: Fila de mercado (datos + fundamentales) de un ticker, desde la DB
+      parameters:
+        - { name: ticker, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Registro del ticker en mercado_cedears
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MercadoCedear' }
+        '404':
+          description: El ticker no está en el snapshot de mercado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /mercado/{ticker}/historico:
     get:
       summary: OHLC e indicadores históricos para el gráfico de detalle
@@ -253,6 +269,11 @@ components:
         market_cap:   { type: [integer, 'null'] }
         w52_high:     { type: [number, 'null'] }
         w52_low:      { type: [number, 'null'] }
+        free_cash_flow: { type: [number, 'null'] }
+        margen_neto:    { type: [number, 'null'] }
+        roe:            { type: [number, 'null'] }
+        price_to_book:  { type: [number, 'null'] }
+        dividend_yield: { type: [number, 'null'] }
         actualizado_en: { type: [string, 'null'], format: date-time }
     MercadoSnapshot:
       type: object

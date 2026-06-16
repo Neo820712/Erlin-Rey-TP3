@@ -4,10 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard de Análisis de Activos</title>
-  <!-- lightweight-charts v5 (TradingView), vanilla, sin build. Pineado para reproducibilidad.
-       PENDIENTE: agregar integrity="sha384-..." (ver plan, sección Task 12) cuando se pueda
-       calcular el hash con acceso de red. -->
-  <script src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"
+  <!-- lightweight-charts v4 (TradingView), vanilla, sin build. Pineado para reproducibilidad.
+       v4 expone addCandlestickSeries/addLineSeries/addHistogramSeries directo en el chart. -->
+  <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"
           crossorigin="anonymous"></script>
   <style>
     :root {
@@ -147,7 +146,9 @@
     /* Vista de detalle */
     .volver { background: none; color: var(--color-primary); padding: 0; margin-bottom: var(--space-md); }
     .volver:hover { background: none; text-decoration: underline; }
-    .metricas { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-lg); }
+    .metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); margin-bottom: var(--space-lg); }
+    @media (max-width: 800px) { .metricas { grid-template-columns: 1fr; } }
+    .metricas .fila .pill { font-size: 0.7rem; }
     .metricas .panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-md); }
     .metricas h3 { margin: 0 0 var(--space-sm); color: var(--color-primary-dark); font-size: 0.9rem; }
     .metricas .fila { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--color-border); font-size: 0.85rem; }
@@ -218,8 +219,9 @@
       <button class="volver" id="btn-volver">← Volver</button>
       <h2 id="detalle-titulo"></h2>
       <div class="metricas">
-        <div class="panel"><h3>Técnico</h3><div id="panel-tecnico"></div></div>
-        <div class="panel"><h3>Fundamental</h3><div id="panel-fundamental"></div></div>
+        <div class="panel"><h3>Datos de la acción</h3><div id="panel-accion"></div></div>
+        <div class="panel"><h3>Análisis fundamental</h3><div id="panel-fundamental"></div></div>
+        <div class="panel"><h3>Indicadores técnicos</h3><div id="panel-tecnico"></div></div>
       </div>
       <div class="periodos" id="periodos"></div>
       <div id="chart-velas"></div>
@@ -573,8 +575,14 @@
       state.detallePeriodo = periodo;
       state.detalle = null;
       state.loading = true; state.error = null; render();
+      const t = encodeURIComponent(ticker);
       try {
-        state.detalle = await api(`/mercado/${encodeURIComponent(ticker)}/historico?periodo=${periodo}`);
+        // Dos fetches en paralelo; los fundamentales son opcionales (404 -> null) y no rompen la vista.
+        const [hist, fund] = await Promise.all([
+          api(`/mercado/${t}/historico?periodo=${periodo}`),
+          api(`/mercado/${t}/fundamentales`).catch(() => null),
+        ]);
+        state.detalle = { ...hist, fundamentales: fund };
       } catch (e) {
         state.error = `No se pudo cargar el histórico de ${ticker}: ${e.message}`;
       } finally {
@@ -597,28 +605,73 @@
       return div;
     }
 
+    function filaSenal(label, senal) {
+      const div = document.createElement('div');
+      div.className = 'fila';
+      const l = document.createElement('span'); l.textContent = label;
+      div.appendChild(l);
+      if (senal) {
+        const pill = document.createElement('span');
+        pill.className = `pill ${claseSenal(senal)}`;
+        pill.textContent = senal;
+        div.appendChild(pill);
+      } else {
+        const v = document.createElement('span'); v.textContent = '—';
+        div.appendChild(v);
+      }
+      return div;
+    }
+
+    function pct(v) {
+      // margen y ROE de yfinance vienen como fracción (0.27 -> 27%)
+      return v == null ? '—' : `${(v * 100).toFixed(2)}%`;
+    }
+    function pctDirecto(v) {
+      // dividendYield de yfinance ya viene como porcentaje (0.36 -> 0.36%)
+      return v == null ? '—' : `${Number(v).toFixed(2)}%`;
+    }
+
     function renderPaneles() {
       const ind = (state.detalle && state.detalle.indicadores) || {};
-      const m = state.mercado.find((c) => c.ticker_byma === state.detalleTicker) || {};
+      const m = (state.detalle && state.detalle.fundamentales) || {};
 
-      const tec = document.getElementById('panel-tecnico');
-      tec.innerHTML = '';
-      tec.appendChild(filaMetrica('RSI (14)', ind.rsi != null ? fmtNum(ind.rsi, 1) : '—'));
-      tec.appendChild(filaMetrica('MACD', ind.macd != null ? `${fmtNum(ind.macd)} vs ${fmtNum(ind.signal)}` : '—'));
-      tec.appendChild(filaMetrica('SMA 20', ind.sma20 != null ? fmtNum(ind.sma20) : '—'));
-      tec.appendChild(filaMetrica('SMA 50', ind.sma50 != null ? fmtNum(ind.sma50) : '—'));
-      tec.appendChild(filaMetrica('Señal', ind.senal || '—'));
-      tec.appendChild(filaMetrica('Confianza', ind.confianza != null ? `${Math.round(ind.confianza * 100)}%` : '—'));
+      // Tarjeta 1: Datos de la acción
+      const acc = document.getElementById('panel-accion');
+      acc.innerHTML = '';
+      acc.appendChild(filaMetrica('Precio (USD)', fmtNum(m.precio_usd)));
+      acc.appendChild(filaMetrica('Var % (día)', m.var_pct != null ? `${fmtNum(m.var_pct)}%` : '—'));
+      acc.appendChild(filaMetrica('Volumen', fmtAbrev(m.volumen)));
+      acc.appendChild(filaMetrica('Market Cap', fmtAbrev(m.market_cap)));
+      acc.appendChild(filaMetrica('52w High', fmtNum(m.w52_high)));
+      acc.appendChild(filaMetrica('52w Low', fmtNum(m.w52_low)));
+      acc.appendChild(filaSenal('Señal del sistema', ind.senal));
+      acc.appendChild(filaMetrica('Confianza', ind.confianza != null ? `${Math.round(ind.confianza * 100)}%` : '—'));
 
+      // Tarjeta 2: Análisis fundamental
       const fun = document.getElementById('panel-fundamental');
       fun.innerHTML = '';
       fun.appendChild(filaMetrica('P/E', fmtNum(m.pe)));
       fun.appendChild(filaMetrica('EPS (TTM)', fmtNum(m.eps)));
-      fun.appendChild(filaMetrica('Market Cap', fmtAbrev(m.market_cap)));
-      fun.appendChild(filaMetrica('Volumen', fmtAbrev(m.volumen)));
-      fun.appendChild(filaMetrica('Var % (día)', m.var_pct != null ? `${fmtNum(m.var_pct)}%` : '—'));
-      fun.appendChild(filaMetrica('52w High', fmtNum(m.w52_high)));
-      fun.appendChild(filaMetrica('52w Low', fmtNum(m.w52_low)));
+      fun.appendChild(filaMetrica('Free Cash Flow', fmtAbrev(m.free_cash_flow)));
+      fun.appendChild(filaMetrica('Margen Neto', pct(m.margen_neto)));
+      fun.appendChild(filaMetrica('ROE', pct(m.roe)));
+      fun.appendChild(filaMetrica('Price-to-Book', fmtNum(m.price_to_book)));
+      fun.appendChild(filaMetrica('Dividend Yield', pctDirecto(m.dividend_yield)));
+
+      // Tarjeta 3: Indicadores técnicos
+      const tec = document.getElementById('panel-tecnico');
+      tec.innerHTML = '';
+      const rsiFila = filaMetrica('RSI (14)', ind.rsi != null ? fmtNum(ind.rsi, 1) : '—');
+      if (ind.rsi != null) {
+        if (ind.rsi < 30) rsiFila.lastChild.className = 'rsi-bajo';
+        else if (ind.rsi > 70) rsiFila.lastChild.className = 'rsi-alto';
+      }
+      tec.appendChild(rsiFila);
+      tec.appendChild(filaMetrica('MACD', ind.macd != null ? `${fmtNum(ind.macd)} vs ${fmtNum(ind.signal)}` : '—'));
+      tec.appendChild(filaMetrica('SMA 20', ind.sma20 != null ? fmtNum(ind.sma20) : '—'));
+      tec.appendChild(filaMetrica('SMA 50', ind.sma50 != null ? fmtNum(ind.sma50) : '—'));
+      tec.appendChild(filaSenal('Señal', ind.senal));
+      tec.appendChild(filaMetrica('Confianza', ind.confianza != null ? `${Math.round(ind.confianza * 100)}%` : '—'));
     }
 
     function renderPeriodos() {
@@ -691,31 +744,28 @@
       const opts = { layout: { background: { color: '#fff' }, textColor: '#1a1a1a' }, height: cont.clientHeight,
         grid: { vertLines: { color: '#eef2f7' }, horzLines: { color: '#eef2f7' } } };
 
-      // lightweight-charts v5: las series se crean con addSeries(TipoSerie, opts);
-      // el build standalone expone los tipos en el global LightweightCharts.
-      const { CandlestickSeries, LineSeries, HistogramSeries } = LightweightCharts;
-
+      // lightweight-charts v4: las series se crean con los métodos directos del chart.
       const chart = LightweightCharts.createChart(cont, opts);
-      const velas = chart.addSeries(CandlestickSeries, { upColor: '#1e7d34', downColor: '#c62828',
+      const velas = chart.addCandlestickSeries({ upColor: '#1e7d34', downColor: '#c62828',
         borderVisible: false, wickUpColor: '#1e7d34', wickDownColor: '#c62828' });
       velas.setData(ohlc);
-      chart.addSeries(LineSeries, { color: getCssVar('--chart-sma20'), lineWidth: 2 }).setData(_puntos(series.sma20, ohlc));
-      chart.addSeries(LineSeries, { color: getCssVar('--chart-sma50'), lineWidth: 2 }).setData(_puntos(series.sma50, ohlc));
+      chart.addLineSeries({ color: getCssVar('--chart-sma20'), lineWidth: 2 }).setData(_puntos(series.sma20, ohlc));
+      chart.addLineSeries({ color: getCssVar('--chart-sma50'), lineWidth: 2 }).setData(_puntos(series.sma50, ohlc));
       chart.timeScale().fitContent();
 
       const rsiChart = LightweightCharts.createChart(rsiCont, { ...opts, height: rsiCont.clientHeight });
-      const rsiLine = rsiChart.addSeries(LineSeries, { color: '#0068b5', lineWidth: 1 });
+      const rsiLine = rsiChart.addLineSeries({ color: '#0068b5', lineWidth: 1 });
       rsiLine.setData(_puntos(series.rsi, ohlc));
       rsiLine.createPriceLine({ price: 70, color: '#c62828', lineStyle: 2, lineWidth: 1 });
       rsiLine.createPriceLine({ price: 30, color: '#1e7d34', lineStyle: 2, lineWidth: 1 });
       rsiChart.timeScale().fitContent();
 
       const macdChart = LightweightCharts.createChart(macdCont, { ...opts, height: macdCont.clientHeight });
-      macdChart.addSeries(HistogramSeries, { color: '#9aa5b1' }).setData(
+      macdChart.addHistogramSeries({ color: '#9aa5b1' }).setData(
         series.hist.map((v, i) => (v == null ? null : { time: ohlc[i].time, value: v,
           color: v >= 0 ? '#1e7d34' : '#c62828' })).filter(Boolean));
-      macdChart.addSeries(LineSeries, { color: getCssVar('--chart-sma20'), lineWidth: 1 }).setData(_puntos(series.macd, ohlc));
-      macdChart.addSeries(LineSeries, { color: getCssVar('--chart-sma50'), lineWidth: 1 }).setData(_puntos(series.signal, ohlc));
+      macdChart.addLineSeries({ color: getCssVar('--chart-sma20'), lineWidth: 1 }).setData(_puntos(series.macd, ohlc));
+      macdChart.addLineSeries({ color: getCssVar('--chart-sma50'), lineWidth: 1 }).setData(_puntos(series.signal, ohlc));
       macdChart.timeScale().fitContent();
     }
 

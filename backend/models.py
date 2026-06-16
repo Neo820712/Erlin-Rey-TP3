@@ -91,6 +91,11 @@ class MercadoCedearBase(SQLModel):
     market_cap: Optional[int] = None
     w52_high: Optional[float] = None
     w52_low: Optional[float] = None
+    free_cash_flow: Optional[float] = None
+    margen_neto: Optional[float] = None
+    roe: Optional[float] = None
+    price_to_book: Optional[float] = None
+    dividend_yield: Optional[float] = None
     actualizado_en: str
 
 

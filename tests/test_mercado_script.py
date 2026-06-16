@@ -17,11 +17,15 @@ def test_fila_desde_arma_dict_completo():
         precio_usd=190.5, var_pct=1.23, volumen=42100000,
         rsi=44.1, senal="hold",
         info={"trailingPE": 28.4, "trailingEps": 6.43, "marketCap": 2800000000000,
-              "fiftyTwoWeekHigh": 260.0, "fiftyTwoWeekLow": 164.0},
+              "fiftyTwoWeekHigh": 260.0, "fiftyTwoWeekLow": 164.0,
+              "freeCashflow": 99000000000, "profitMargins": 0.25, "returnOnEquity": 1.5,
+              "priceToBook": 47.3, "dividendYield": 0.005},
     )
     assert fila["ticker_byma"] == "AAPL"
     assert fila["pe"] == 28.4 and fila["market_cap"] == 2800000000000
     assert fila["w52_high"] == 260.0
+    assert fila["free_cash_flow"] == 99000000000 and fila["margen_neto"] == 0.25
+    assert fila["roe"] == 1.5 and fila["price_to_book"] == 47.3 and fila["dividend_yield"] == 0.005
 
 
 def test_fila_desde_tolera_info_vacia():
@@ -30,6 +34,7 @@ def test_fila_desde_tolera_info_vacia():
         precio_usd=1.0, var_pct=0.0, volumen=1, rsi=50.0, senal="hold", info={},
     )
     assert fila["pe"] is None and fila["market_cap"] is None and fila["eps"] is None
+    assert fila["free_cash_flow"] is None and fila["roe"] is None and fila["dividend_yield"] is None
 
 
 def test_persistir_hace_upsert(monkeypatch):

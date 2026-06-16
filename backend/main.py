@@ -209,3 +209,15 @@ def historico_mercado(ticker: str, periodo: str = "3m"):
     except json.JSONDecodeError:
         logger.error("salida no-JSON de scripts.historico: %r", stdout[:500])
         raise HTTPException(status_code=500, detail={"message": "Respuesta inválida del proceso de histórico."})
+
+
+@app.get("/mercado/{ticker}/fundamentales", response_model=MercadoCedear)
+def fundamentales_mercado(ticker: str, session: Session = Depends(get_session)):
+    if not _TICKER_VALIDO.fullmatch(ticker):
+        raise HTTPException(status_code=400, detail={"message": "Ticker inválido."})
+    fila = session.exec(
+        select(MercadoCedear).where(MercadoCedear.ticker_byma == ticker.upper())
+    ).first()
+    if fila is None:
+        raise HTTPException(status_code=404, detail={"message": "El ticker no está en el snapshot de mercado."})
+    return fila

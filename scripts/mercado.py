@@ -3,7 +3,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import Session, SQLModel
 
 from backend.database import engine
 from backend.models import MercadoCedear
@@ -33,6 +33,11 @@ def fila_desde(entrada, precio_usd, var_pct, volumen, rsi, senal, info) -> dict:
         "market_cap": info.get("marketCap"),
         "w52_high": info.get("fiftyTwoWeekHigh"),
         "w52_low": info.get("fiftyTwoWeekLow"),
+        "free_cash_flow": info.get("freeCashflow"),
+        "margen_neto": info.get("profitMargins"),
+        "roe": info.get("returnOnEquity"),
+        "price_to_book": info.get("priceToBook"),
+        "dividend_yield": info.get("dividendYield"),
     }
 
 
@@ -66,26 +71,15 @@ def _datos_de_ticker(entrada: dict) -> dict | None:
 
 
 def persistir(filas: list[dict], actualizado_en: str) -> int:
-    """Upsert por ticker_byma y borra los tickers que ya no estan en el lote, de modo que la
-    tabla refleje exactamente el catalogo actual. Devuelve la cantidad de filas escritas."""
+    """Reescribe el snapshot completo: descarta la tabla y la recrea con el esquema actual
+    (asi nuevas columnas se aplican) e inserta exactamente las filas del catalogo. Devuelve
+    la cantidad de filas escritas."""
+    MercadoCedear.__table__.drop(engine, checkfirst=True)
     SQLModel.metadata.create_all(engine)
-    vigentes = {f["ticker_byma"] for f in filas}
     n = 0
     with Session(engine) as session:
-        for existente in session.exec(select(MercadoCedear)).all():
-            if existente.ticker_byma not in vigentes:
-                session.delete(existente)
         for f in filas:
-            existente = session.exec(
-                select(MercadoCedear).where(MercadoCedear.ticker_byma == f["ticker_byma"])
-            ).first()
-            if existente is None:
-                existente = MercadoCedear(**f, actualizado_en=actualizado_en)
-                session.add(existente)
-            else:
-                for k, v in f.items():
-                    setattr(existente, k, v)
-                existente.actualizado_en = actualizado_en
+            session.add(MercadoCedear(**f, actualizado_en=actualizado_en))
             n += 1
         session.commit()
     return n
