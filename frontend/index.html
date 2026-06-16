@@ -303,8 +303,7 @@
 
     async function cargarCedears() {
       try {
-        const resp = await fetch('cedears.json');
-        state.cedears = await resp.json();
+        state.cedears = await api('/mercado/catalogo');
       } catch (e) {
         state.cedears = [];  // el autocompletado queda vacío pero el alta manual sigue funcionando
       }
@@ -692,27 +691,31 @@
       const opts = { layout: { background: { color: '#fff' }, textColor: '#1a1a1a' }, height: cont.clientHeight,
         grid: { vertLines: { color: '#eef2f7' }, horzLines: { color: '#eef2f7' } } };
 
+      // lightweight-charts v5: las series se crean con addSeries(TipoSerie, opts);
+      // el build standalone expone los tipos en el global LightweightCharts.
+      const { CandlestickSeries, LineSeries, HistogramSeries } = LightweightCharts;
+
       const chart = LightweightCharts.createChart(cont, opts);
-      const velas = chart.addCandlestickSeries({ upColor: '#1e7d34', downColor: '#c62828', borderVisible: false,
-        wickUpColor: '#1e7d34', wickDownColor: '#c62828' });
+      const velas = chart.addSeries(CandlestickSeries, { upColor: '#1e7d34', downColor: '#c62828',
+        borderVisible: false, wickUpColor: '#1e7d34', wickDownColor: '#c62828' });
       velas.setData(ohlc);
-      chart.addLineSeries({ color: getCssVar('--chart-sma20'), lineWidth: 2 }).setData(_puntos(series.sma20, ohlc));
-      chart.addLineSeries({ color: getCssVar('--chart-sma50'), lineWidth: 2 }).setData(_puntos(series.sma50, ohlc));
+      chart.addSeries(LineSeries, { color: getCssVar('--chart-sma20'), lineWidth: 2 }).setData(_puntos(series.sma20, ohlc));
+      chart.addSeries(LineSeries, { color: getCssVar('--chart-sma50'), lineWidth: 2 }).setData(_puntos(series.sma50, ohlc));
       chart.timeScale().fitContent();
 
       const rsiChart = LightweightCharts.createChart(rsiCont, { ...opts, height: rsiCont.clientHeight });
-      const rsiLine = rsiChart.addLineSeries({ color: '#0068b5', lineWidth: 1 });
+      const rsiLine = rsiChart.addSeries(LineSeries, { color: '#0068b5', lineWidth: 1 });
       rsiLine.setData(_puntos(series.rsi, ohlc));
       rsiLine.createPriceLine({ price: 70, color: '#c62828', lineStyle: 2, lineWidth: 1 });
       rsiLine.createPriceLine({ price: 30, color: '#1e7d34', lineStyle: 2, lineWidth: 1 });
       rsiChart.timeScale().fitContent();
 
       const macdChart = LightweightCharts.createChart(macdCont, { ...opts, height: macdCont.clientHeight });
-      macdChart.addHistogramSeries({ color: '#9aa5b1' }).setData(
+      macdChart.addSeries(HistogramSeries, { color: '#9aa5b1' }).setData(
         series.hist.map((v, i) => (v == null ? null : { time: ohlc[i].time, value: v,
           color: v >= 0 ? '#1e7d34' : '#c62828' })).filter(Boolean));
-      macdChart.addLineSeries({ color: getCssVar('--chart-sma20'), lineWidth: 1 }).setData(_puntos(series.macd, ohlc));
-      macdChart.addLineSeries({ color: getCssVar('--chart-sma50'), lineWidth: 1 }).setData(_puntos(series.signal, ohlc));
+      macdChart.addSeries(LineSeries, { color: getCssVar('--chart-sma20'), lineWidth: 1 }).setData(_puntos(series.macd, ohlc));
+      macdChart.addSeries(LineSeries, { color: getCssVar('--chart-sma50'), lineWidth: 1 }).setData(_puntos(series.signal, ohlc));
       macdChart.timeScale().fitContent();
     }
 

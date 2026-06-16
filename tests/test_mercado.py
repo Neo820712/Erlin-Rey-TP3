@@ -46,6 +46,32 @@ def _sembrar_fila(session, ticker="AAPL", actualizado="2026-06-15T12:00:00Z"):
     return fila
 
 
+def test_get_catalogo_lee_el_archivo(client, tmp_path, monkeypatch):
+    import backend.main as main
+    catalogo = tmp_path / "cedears.json"
+    catalogo.write_text(
+        json.dumps([
+            {"ticker_byma": "AAPL", "ticker_us": "AAPL", "nombre": "Apple Inc.",
+             "mercado": "NASDAQ", "tipo": "accion"}
+        ]),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(main, "_CATALOGO_PATH", str(catalogo))
+    resp = client.get("/mercado/catalogo")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body[0]["ticker_byma"] == "AAPL"
+    assert body[0]["mercado"] == "NASDAQ"
+
+
+def test_get_catalogo_archivo_faltante_devuelve_500(client, monkeypatch):
+    import backend.main as main
+    monkeypatch.setattr(main, "_CATALOGO_PATH", "data/no-existe-cedears.json")
+    resp = client.get("/mercado/catalogo")
+    assert resp.status_code == 500
+    assert "message" in resp.json()
+
+
 def test_get_mercado_vacio(client):
     resp = client.get("/mercado/cedears")
     assert resp.status_code == 200

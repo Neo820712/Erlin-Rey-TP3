@@ -152,6 +152,19 @@ def borrar_analisis(activo_id: int, analisis_id: int, session: Session = Depends
     logger.info("204 análisis borrado id=%s activo=%s", analisis_id, activo_id)
 
 
+_CATALOGO_PATH = os.environ.get("CEDEARS_PATH", "data/cedears.json")
+
+
+@app.get("/mercado/catalogo")
+def catalogo_cedears():
+    try:
+        with open(_CATALOGO_PATH, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.error("no se pudo leer el catálogo %s: %s", _CATALOGO_PATH, e)
+        raise HTTPException(status_code=500, detail={"message": "No se pudo leer el catálogo de CEDEARs."})
+
+
 @app.get("/mercado/cedears")
 def listar_mercado(session: Session = Depends(get_session)):
     filas = session.exec(select(MercadoCedear)).all()
