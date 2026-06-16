@@ -19,6 +19,9 @@ técnicos reales (RSI, MACD, SMA) sobre precios históricos.
 ## Comandos clave
 
 ```bash
+# Demo: levanta backend + frontend y abre el dashboard (doble click en Windows)
+start.bat
+
 # Backend (API en http://localhost:8000)
 uv run uvicorn backend.main:app --reload --port 8000
 

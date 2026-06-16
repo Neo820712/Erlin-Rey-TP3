@@ -51,3 +51,21 @@ def test_persistir_hace_upsert(monkeypatch):
         assert len(todas) == 1  # upsert, no duplica
         assert todas[0].precio_usd == 200.0
         assert todas[0].actualizado_en == "2026-06-15T13:00:00Z"
+
+
+def _fila(ticker):
+    return {"ticker_byma": ticker, "ticker_us": ticker, "nombre": f"{ticker} Inc.",
+            "precio_usd": 1.0, "var_pct": 0.0, "volumen": 1, "rsi": 50.0, "senal": "hold",
+            "pe": None, "eps": None, "market_cap": None, "w52_high": None, "w52_low": None}
+
+
+def test_persistir_borra_tickers_que_salieron_del_catalogo(monkeypatch):
+    eng = _engine_memoria()
+    monkeypatch.setattr(mercado, "engine", eng)
+
+    mercado.persistir([_fila("AAPL"), _fila("INTC")], "2026-06-15T12:00:00Z")
+    mercado.persistir([_fila("AAPL"), _fila("UBER")], "2026-06-15T13:00:00Z")
+
+    with Session(eng) as s:
+        tickers = {m.ticker_byma for m in s.exec(select(MercadoCedear)).all()}
+        assert tickers == {"AAPL", "UBER"}  # INTC fue removido

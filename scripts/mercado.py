@@ -66,10 +66,15 @@ def _datos_de_ticker(entrada: dict) -> dict | None:
 
 
 def persistir(filas: list[dict], actualizado_en: str) -> int:
-    """Upsert por ticker_byma. Devuelve la cantidad de filas escritas."""
+    """Upsert por ticker_byma y borra los tickers que ya no estan en el lote, de modo que la
+    tabla refleje exactamente el catalogo actual. Devuelve la cantidad de filas escritas."""
     SQLModel.metadata.create_all(engine)
+    vigentes = {f["ticker_byma"] for f in filas}
     n = 0
     with Session(engine) as session:
+        for existente in session.exec(select(MercadoCedear)).all():
+            if existente.ticker_byma not in vigentes:
+                session.delete(existente)
         for f in filas:
             existente = session.exec(
                 select(MercadoCedear).where(MercadoCedear.ticker_byma == f["ticker_byma"])
