@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import pandas as pd
 
@@ -34,3 +35,27 @@ def test_construir_historico_indicadores_finales():
     ind = out["indicadores"]
     assert ind["senal"] in {"compra", "venta", "hold"}
     assert ind["sma20"] is not None and ind["sma50"] is not None
+
+
+def test_main_sin_precios_devuelve_0_con_error(monkeypatch, capsys):
+    import scripts.historico as h
+
+    monkeypatch.setattr(h, "obtener_ohlc", lambda t, p="1y": (None, "none", None))
+    rc = h.main(["historico.py", "AAPL", "3m"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert "error" in out
+    assert "AAPL" in out["error"]
+
+
+def test_main_lee_de_obtener_ohlc_y_sin_score_en_indicadores(monkeypatch, capsys):
+    import scripts.historico as h
+
+    df = _df_sintetico(120)
+    monkeypatch.setattr(h, "obtener_ohlc", lambda t, p="1y": (df, "db", "2025-04-30"))
+    rc = h.main(["historico.py", "AAPL", "3m"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert "ohlc" in out and "indicadores" in out
+    assert "score" not in out["indicadores"]
+    assert out["indicadores"]["senal"] in {"compra", "venta", "hold"}

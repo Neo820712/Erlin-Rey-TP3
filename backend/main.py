@@ -7,7 +7,7 @@ import sys
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -77,7 +77,12 @@ def listar_activos(session: Session = Depends(get_session)):
 
 
 @app.post("/activos", response_model=Activo, status_code=status.HTTP_201_CREATED)
-def crear_activo(data: ActivoCreate, session: Session = Depends(get_session)):
+def crear_activo(data: ActivoCreate, response: Response, session: Session = Depends(get_session)):
+    existente = session.exec(select(Activo).where(Activo.ticker == data.ticker)).first()
+    if existente is not None:
+        response.status_code = status.HTTP_200_OK
+        logger.info("200 activo ya existía id=%s ticker=%s", existente.id, existente.ticker)
+        return existente
     activo = Activo.model_validate(data)
     session.add(activo)
     session.commit()
@@ -98,6 +103,8 @@ def detalle_activo(activo_id: int, session: Session = Depends(get_session)):
         ).first()
         if ultimo is not None:
             setattr(senales, tipo, ultimo.senal)
+            if tipo == "tecnico":
+                senales.score = ultimo.score
     return ActivoDetalle(**activo.model_dump(), senales_recientes=senales)
 
 
@@ -135,6 +142,39 @@ def crear_analisis(activo_id: int, data: AnalisisCreate, session: Session = Depe
     session.commit()
     session.refresh(analisis)
     logger.info("201 análisis creado id=%s activo=%s senal=%s", analisis.id, activo_id, analisis.senal)
+    return analisis
+
+
+@app.post(
+    "/activos/{activo_id}/analisis/tecnico",
+    response_model=Analisis,
+    status_code=status.HTTP_201_CREATED,
+)
+def crear_analisis_tecnico(activo_id: int, session: Session = Depends(get_session)):
+    activo = _activo_o_404(activo_id, session)
+    if not _TICKER_VALIDO.fullmatch(activo.ticker):
+        raise HTTPException(status_code=400, detail={"message": "Ticker inválido."})
+    stdout = _correr_script("scripts.score_tecnico", activo.ticker)
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        logger.error("salida no-JSON de scripts.score_tecnico: %r", stdout[:500])
+        raise HTTPException(status_code=500, detail={"message": "Respuesta inválida del cálculo técnico."})
+    if "error" in data:
+        raise HTTPException(status_code=400, detail={"message": data["error"]})
+    analisis = Analisis(
+        tipo="tecnico",
+        senal=data["senal"],
+        confianza=data["confianza"],
+        resumen=data["resumen"],
+        score=data["score"],
+        activo_id=activo_id,
+        created_at=_ahora_iso(),
+    )
+    session.add(analisis)
+    session.commit()
+    session.refresh(analisis)
+    logger.info("201 análisis técnico id=%s activo=%s score=%s", analisis.id, activo_id, analisis.score)
     return analisis
 
 
@@ -205,10 +245,28 @@ def historico_mercado(ticker: str, periodo: str = "3m"):
         raise HTTPException(status_code=400, detail={"message": "Ticker inválido."})
     stdout = _correr_script("scripts.historico", ticker, periodo)
     try:
-        return json.loads(stdout)
+        data = json.loads(stdout)
     except json.JSONDecodeError:
         logger.error("salida no-JSON de scripts.historico: %r", stdout[:500])
         raise HTTPException(status_code=500, detail={"message": "Respuesta inválida del proceso de histórico."})
+    if "error" in data:
+        raise HTTPException(status_code=400, detail={"message": f"No hay precios para {ticker}. Corré Actualizar primero."})
+    return data
+
+
+@app.get("/mercado/{ticker}/tecnico")
+def tecnico_mercado(ticker: str):
+    if not _TICKER_VALIDO.fullmatch(ticker):
+        raise HTTPException(status_code=400, detail={"message": "Ticker inválido."})
+    stdout = _correr_script("scripts.score_tecnico", ticker)
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        logger.error("salida no-JSON de scripts.score_tecnico: %r", stdout[:500])
+        raise HTTPException(status_code=500, detail={"message": "Respuesta inválida del cálculo técnico."})
+    if "error" in data:
+        raise HTTPException(status_code=400, detail={"message": f"No hay precios para {ticker}. Corré Actualizar primero."})
+    return data
 
 
 @app.get("/mercado/{ticker}/fundamentales", response_model=MercadoCedear)

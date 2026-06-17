@@ -74,3 +74,35 @@ def test_persistir_borra_tickers_que_salieron_del_catalogo(monkeypatch):
     with Session(eng) as s:
         tickers = {m.ticker_byma for m in s.exec(select(MercadoCedear)).all()}
         assert tickers == {"AAPL", "UBER"}  # INTC fue removido
+
+
+def test_datos_de_ticker_sin_senal_ni_rsi_y_con_ohlc(monkeypatch):
+    import sys
+    import types
+
+    import pandas as pd
+
+    fake = types.ModuleType("yfinance")
+    idx = pd.date_range("2025-01-01", periods=60, freq="D", tz="UTC")
+    df = pd.DataFrame(
+        {"Open": 1.0, "High": 2.0, "Low": 0.5, "Close": 1.5, "Volume": 100}, index=idx
+    )
+
+    class FakeTk:
+        def __init__(self, _t):
+            pass
+
+        def history(self, period="1y"):
+            return df
+
+        @property
+        def info(self):
+            return {"trailingPE": 10}
+
+    fake.Ticker = FakeTk
+    monkeypatch.setitem(sys.modules, "yfinance", fake)
+
+    r = mercado._datos_de_ticker({"ticker_byma": "AAPL", "ticker_us": "AAPL", "nombre": "Apple"})
+    assert r["fila"]["rsi"] is None and r["fila"]["senal"] is None
+    assert len(r["precios"]) == 60
+    assert r["precios"][0]["ticker"] == "AAPL"

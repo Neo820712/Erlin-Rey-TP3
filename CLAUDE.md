@@ -12,7 +12,7 @@ técnicos reales (RSI, MACD, SMA) sobre precios históricos.
 | Backend (API REST) | FastAPI + SQLModel |
 | Base de datos | SQLite (`data/activos.db`) |
 | Frontend | HTML/CSS/JS vanilla, single-file (`frontend/index.html`) |
-| Análisis técnico | yfinance + pandas-ta (en `scripts/`, fuera del backend) |
+| Análisis técnico | yfinance + pandas (en `scripts/`, fuera del backend) |
 | Tooling | uv |
 | Tests | pytest |
 
@@ -62,11 +62,12 @@ backend/                 SOLO CRUD, no importa yfinance/pandas
   models.py              SQLModel (Activo, Analisis + variantes Create)
   database.py            engine, Session dependency, PRAGMA FK, create_db()
 scripts/                 capa de análisis (todo lo que toca red/cálculo)
-  prices.py              yfinance + caché + fallback (compartido)
-  indicators.py          cálculo puro RSI/MACD/SMA (sin red, testeable)
-  generar_senal.py       orquesta: prices -> indicators -> POST /activos/{id}/analisis
-  seed.py                inserta activos + análisis (cascada caché/red/hardcode)
-  mercado.py             descarga paralela de CEDEARs -> persiste en mercado_cedears
+  prices.py              ingesta/lectura de la tabla precios (sin red)
+  indicators.py          cálculo puro RSI/MACD/SMA + score 0-100 (sin red)
+  score_tecnico.py       computar(ticker): prices -> indicators; compartido por skill y endpoint
+  generar_senal.py       orquesta: score_tecnico -> POST /activos/{id}/analisis
+  seed.py                inserta activos + análisis (cascada red/hardcode)
+  mercado.py             descarga paralela de CEDEARs -> mercado_cedears + tabla precios
   historico.py           OHLC + indicadores para el gráfico (JSON por stdout)
 frontend/
   index.html             dashboard single-file (servido en :3000)
@@ -74,12 +75,11 @@ tests/
   test_api.py            los 7 endpoints
   test_indicators.py     cálculo de indicadores
   test_mercado.py        endpoints /mercado y modelo MercadoCedear
-  test_prices.py         obtener_ohlc (caché OHLCV)
+  test_prices.py         obtener_ohlc (lectura de la tabla precios)
   test_historico.py      armado del JSON de histórico (puro)
   test_mercado_script.py upsert y armado de filas de mercado.py
 data/
-  activos.db             base SQLite (en .gitignore)
-  prices_cache/          CSV de precios cacheados (en .gitignore)
+  activos.db             base SQLite (en .gitignore); incluye tabla precios (OHLC)
   cedears.json           lista curada de CEDEARs US (autocompletado + tabla de mercado)
 ```
 
@@ -94,10 +94,14 @@ data/
   se **sirve** en ese puerto, no se abre con `file://`.
 - **El backend no toca el dominio financiero externo.** Nada de yfinance ni pandas en `backend/`;
   todo lo que descarga precios o calcula indicadores vive en `scripts/`. El backend es solo CRUD.
+- **Fuente unica de precios:** yfinance solo corre en `POST /mercado/actualizar`, que persiste
+  OHLC en la tabla `precios`. `/historico` y el score leen de `precios`, nunca de red.
 - **El backend no descarga datos de mercado:** `POST /mercado/actualizar` y
   `GET /mercado/{ticker}/historico` lanzan `scripts/mercado.py` e `scripts/historico.py` como
-  subprocesos (stdout JSON). La tabla `mercado_cedears` guarda el último snapshot (precios en USD,
-  desde el ticker US). El histórico valida el `ticker` antes de pasarlo al subproceso.
+  subprocesos (stdout JSON). La tabla `mercado_cedears` guarda el snapshot sin senal/rsi
+  (esos campos son `None`). `POST /activos/{id}/analisis/tecnico` (en cartera, persiste) y
+  `GET /mercado/{ticker}/tecnico` (fuera de cartera, sin persistir) lanzan
+  `scripts.score_tecnico` como subproceso; el backend no computa, solo el primero guarda.
 - **Foreign key con borrado en cascada.** SQLite no aplica FK por defecto: el engine emite
   `PRAGMA foreign_keys=ON` por conexión. Borrar un activo borra sus análisis.
 
@@ -128,15 +132,17 @@ data/
   hardcodear hex en las reglas.
 - **Flexbox/Grid** para el layout, nunca `float`.
 - **No usar `innerHTML` con datos del servidor sin sanitizar** (riesgo XSS).
+- **Cartera por checkbox:** el usuario marca/desmarca activos desde la tabla de mercado; no hay
+  formulario de alta independiente.
 
 ## Skill `/generar-senal`
 
 `/generar-senal TICKER [tipo]` — `tipo` = `tecnico` (default) | `sentimiento`.
 
 Implementa el ciclo ReAct (think -> act -> observe) y **delega el cálculo a `scripts/`**: el cuerpo
-de la skill orquesta, pero quien descarga precios y calcula indicadores es
-`scripts/generar_senal.py` (vía `scripts/prices.py` + `scripts/indicators.py`). Así el cálculo es
-determinístico y testeable, no depende del prompt.
+de la skill orquesta, pero quien computa el score es `scripts/score_tecnico.py` (compartido con el
+endpoint `POST /activos/{id}/analisis/tecnico`). El resultado incluye el score 0-100, la senal
+derivada y la confianza.
 
 `tipo sentimiento` **no está implementado**: el script devuelve `400 - "tipo sentimiento no
 implementado en esta versión"`. El enum y el `openapi.yaml` igual lo contemplan; la restricción

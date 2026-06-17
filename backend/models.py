@@ -50,6 +50,7 @@ class AnalisisBase(SQLModel):
     senal: Senal
     confianza: float = Field(ge=0.0, le=1.0)
     resumen: str
+    score: Optional[float] = None
 
 
 class AnalisisCreate(AnalisisBase):
@@ -69,6 +70,7 @@ class Analisis(AnalisisBase, table=True):
 class SenalesRecientes(SQLModel):
     tecnico: Optional[Senal] = None
     sentimiento: Optional[Senal] = None
+    score: Optional[float] = None
 
 
 class ActivoDetalle(ActivoBase):
@@ -105,4 +107,20 @@ class MercadoCedearCreate(MercadoCedearBase):
 
 class MercadoCedear(MercadoCedearBase, table=True):
     __tablename__ = "mercado_cedears"
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+
+# --- Precio (tabla interna de OHLC, fuente unica de precios) ---
+class PrecioBase(SQLModel):
+    ticker: str
+    fecha: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volumen: Optional[int] = None
+
+
+class Precio(PrecioBase, table=True):
+    __tablename__ = "precios"
     id: Optional[int] = Field(default=None, primary_key=True)

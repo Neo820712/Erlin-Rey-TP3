@@ -17,13 +17,18 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/Activo' }
     post:
-      summary: Crear un activo
+      summary: Crear un activo (idempotente por ticker)
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ActivoCreate' }
       responses:
+        '200':
+          description: El ticker ya estaba en la cartera; devuelve el activo existente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Activo' }
         '201':
           description: Activo creado
           content:
@@ -117,6 +122,32 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /activos/{id}/analisis/tecnico:
+    post:
+      summary: Computa el score tecnico desde precios y persiste el analisis
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '201':
+          description: Analisis tecnico creado (senal/confianza/resumen/score computados)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Analisis' }
+        '400':
+          description: No hay precios para el ticker (correr Actualizar primero)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: El activo no existe
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Fallo el computo del score
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /mercado/catalogo:
     get:
       summary: Catálogo de CEDEARs para el autocompletado (lee data/cedears.json)
@@ -197,6 +228,27 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /mercado/{ticker}/tecnico:
+    get:
+      summary: Computa el score técnico de un ticker desde precios (sin persistir)
+      parameters:
+        - { name: ticker, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Score técnico computado (no se guarda)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScoreTecnico' }
+        '400':
+          description: Ticker inválido o sin precios (correr Actualizar primero)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Falló el cómputo del score
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 components:
   schemas:
     ActivoCreate:
@@ -219,6 +271,7 @@ components:
       properties:
         tecnico: { type: [string, 'null'], enum: [compra, venta, hold, null] }
         sentimiento: { type: [string, 'null'], enum: [compra, venta, hold, null] }
+        score: { type: [number, 'null'] }
     ActivoDetalle:
       allOf:
         - $ref: '#/components/schemas/Activo'
@@ -234,6 +287,7 @@ components:
         senal: { type: string, enum: [compra, venta, hold] }
         confianza: { type: number, minimum: 0, maximum: 1 }
         resumen: { type: string }
+        score: { type: [number, 'null'] }
     Analisis:
       allOf:
         - $ref: '#/components/schemas/AnalisisCreate'
@@ -323,6 +377,14 @@ components:
             sma50:     { type: [number, 'null'] }
             senal:     { type: [string, 'null'], enum: [compra, venta, hold, null] }
             confianza: { type: [number, 'null'] }
+    ScoreTecnico:
+      type: object
+      required: [senal, confianza, resumen, score]
+      properties:
+        senal:     { type: string, enum: [compra, venta, hold] }
+        confianza: { type: number, minimum: 0, maximum: 1 }
+        resumen:   { type: string }
+        score:     { type: number }
     Error:
       type: object
       required: [message]

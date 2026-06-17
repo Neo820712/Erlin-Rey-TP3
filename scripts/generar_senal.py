@@ -3,8 +3,7 @@ import os
 import sys
 import urllib.request
 
-from scripts.indicators import analizar
-from scripts.prices import obtener_precios
+from scripts.score_tecnico import computar
 
 API_BASE = os.environ.get("API_BASE", "http://localhost:8000")
 
@@ -42,32 +41,33 @@ def generar(ticker: str, tipo: str = "tecnico") -> int:
         print(f"Error: el ticker {ticker} no existe en la base. Crealo primero (formulario o seed).")
         return 1
 
-    close, procedencia, fecha = obtener_precios(ticker)
-    if procedencia == "none":
-        print(f"Error: no se pudieron obtener precios de {ticker} (red caida y sin cache).")
-        return 1
-
     try:
-        res = analizar(close)
+        res = computar(ticker)
     except ValueError as e:
         print(f"Error: {e}")
         return 1
 
     estado, creado = _post(
         f"/activos/{activo['id']}/analisis",
-        {"tipo": "tecnico", "senal": res["senal"], "confianza": res["confianza"], "resumen": res["resumen"]},
+        {
+            "tipo": "tecnico",
+            "senal": res["senal"],
+            "confianza": res["confianza"],
+            "resumen": res["resumen"],
+            "score": res["score"],
+        },
     )
 
     if estado != 201:
         print(f"Error: la API devolvio {estado} al crear el analisis.")
         return 1
-    origen = "datos en vivo de yfinance" if procedencia == "red" else f"datos cacheados del {fecha}"
     print(f"Analisis tecnico generado para {ticker.upper()}")
+    print(f"  Score:     {res['score']:.0f}/100")
     print(f"  Senal:     {creado['senal']}")
     print(f"  Confianza: {int(res['confianza'] * 100)}%")
     print(f"  Resumen:   {creado['resumen']}")
     print(f"  Analisis id: {creado['id']}  (created_at {creado['created_at']})")
-    print(f"  Precios:   {origen}")
+    print("  Precios:   tabla precios (ultimo Actualizar)")
     return 0
 
 

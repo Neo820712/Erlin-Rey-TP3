@@ -7,7 +7,7 @@ from sqlmodel import Session, SQLModel
 
 from backend.database import engine
 from backend.models import MercadoCedear
-from scripts.indicators import analizar
+from scripts.prices import filas_precio_desde_df, guardar_ohlc
 
 CEDEARS_PATH = "data/cedears.json"
 MAX_WORKERS = 25
@@ -42,7 +42,7 @@ def fila_desde(entrada, precio_usd, var_pct, volumen, rsi, senal, info) -> dict:
 
 
 def _datos_de_ticker(entrada: dict) -> dict | None:
-    """Descarga de red (yfinance) los datos de un ticker. Devuelve la fila o None si falla."""
+    """Descarga de red (yfinance) los datos de un ticker. Devuelve {fila, precios} o None si falla."""
     import yfinance as yf
 
     try:
@@ -56,15 +56,12 @@ def _datos_de_ticker(entrada: dict) -> dict | None:
         var_pct = round((precio - previo) / previo * 100, 2) if previo else 0.0
         volumen = int(hist["Volume"].iloc[-1]) if "Volume" in hist.columns else None
         try:
-            ana = analizar(close)
-            rsi_val, senal = round(ana["rsi"], 2), ana["senal"]
-        except ValueError:
-            rsi_val, senal = None, None
-        try:
             info = tk.info or {}
         except Exception:
             info = {}
-        return fila_desde(entrada, round(precio, 2), var_pct, volumen, rsi_val, senal, info)
+        fila = fila_desde(entrada, round(precio, 2), var_pct, volumen, None, None, info)
+        precios = filas_precio_desde_df(entrada["ticker_byma"], hist)
+        return {"fila": fila, "precios": precios}
     except Exception as e:
         print(f"aviso: fallo {entrada['ticker_us']}: {e}", file=sys.stderr)
         return None
@@ -90,9 +87,12 @@ def actualizar() -> dict:
         entradas = json.load(fh)
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
         resultados = list(pool.map(_datos_de_ticker, entradas))
-    filas = [r for r in resultados if r is not None]
+    ok = [r for r in resultados if r is not None]
+    filas = [r["fila"] for r in ok]
+    precios = [p for r in ok for p in r["precios"]]
     ts = _ahora_iso()
     n = persistir(filas, ts)
+    guardar_ohlc(precios)
     return {"actualizados": n, "actualizado_en": ts}
 
 

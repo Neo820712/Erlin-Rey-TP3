@@ -143,6 +143,18 @@ def test_get_historico_passthrough(client, monkeypatch):
     assert resp.json() == payload
 
 
+def test_get_historico_sin_precios_devuelve_400(client, monkeypatch):
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(
+            cmd, returncode=0, stdout=json.dumps({"error": "sin datos OHLC para AAPL"}), stderr=""
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    resp = client.get("/mercado/AAPL/historico?periodo=3m")
+    assert resp.status_code == 400
+    assert "message" in resp.json()
+
+
 def test_get_historico_periodo_invalido_devuelve_400(client):
     resp = client.get("/mercado/AAPL/historico?periodo=5x")
     assert resp.status_code == 400
@@ -152,5 +164,35 @@ def test_get_historico_periodo_invalido_devuelve_400(client):
 def test_get_historico_ticker_invalido_devuelve_400(client):
     # un ticker que empieza con '-' no debe poder colarse como flag al subproceso
     resp = client.get("/mercado/-rf/historico?periodo=3m")
+    assert resp.status_code == 400
+    assert "message" in resp.json()
+
+
+def test_get_tecnico_passthrough(client, monkeypatch):
+    payload = {"senal": "compra", "confianza": 0.64, "resumen": "Score 82/100 (compra).", "score": 82.0}
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout=json.dumps(payload), stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    resp = client.get("/mercado/AAPL/tecnico")
+    assert resp.status_code == 200
+    assert resp.json() == payload
+
+
+def test_get_tecnico_sin_precios_devuelve_400(client, monkeypatch):
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(
+            cmd, returncode=0, stdout=json.dumps({"error": "sin datos OHLC para AAPL"}), stderr=""
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    resp = client.get("/mercado/AAPL/tecnico")
+    assert resp.status_code == 400
+    assert "message" in resp.json()
+
+
+def test_get_tecnico_ticker_invalido_devuelve_400(client):
+    resp = client.get("/mercado/-rf/tecnico")
     assert resp.status_code == 400
     assert "message" in resp.json()
