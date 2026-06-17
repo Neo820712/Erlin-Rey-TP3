@@ -165,6 +165,59 @@ def test_borrar_activo_borra_sus_analisis_en_cascada(client, session):
     assert session.exec(select(Analisis).where(Analisis.activo_id == aid)).all() == []
 
 
+def test_detalle_activo_incluye_score(client):
+    aid = _crear_activo(client)
+    client.post(
+        f"/activos/{aid}/analisis",
+        json={"tipo": "tecnico", "senal": "compra", "confianza": 0.6, "resumen": "x", "score": 72.0},
+    )
+    sr = client.get(f"/activos/{aid}").json()["senales_recientes"]
+    assert sr["tecnico"] == "compra" and sr["score"] == 72.0
+
+
+def test_crear_analisis_tecnico_persiste_201(client, monkeypatch):
+    import json
+    import subprocess
+
+    aid = _crear_activo(client)
+    salida = json.dumps(
+        {"senal": "compra", "confianza": 0.8, "resumen": "Score 90/100 (compra).", "score": 90.0}
+    )
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout=salida, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    resp = client.post(f"/activos/{aid}/analisis/tecnico")
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["tipo"] == "tecnico" and body["senal"] == "compra" and body["score"] == 90.0
+    assert body["activo_id"] == aid and body["created_at"]
+
+
+def test_crear_analisis_tecnico_sin_precios_devuelve_400(client, monkeypatch):
+    import json
+    import subprocess
+
+    aid = _crear_activo(client)
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(
+            cmd, returncode=0, stdout=json.dumps({"error": "sin precios para AAPL"}), stderr=""
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    resp = client.post(f"/activos/{aid}/analisis/tecnico")
+    assert resp.status_code == 400
+    assert "message" in resp.json()
+
+
+def test_crear_analisis_tecnico_activo_inexistente_devuelve_404(client):
+    resp = client.post("/activos/999/analisis/tecnico")
+    assert resp.status_code == 404
+    assert "message" in resp.json()
+
+
 def test_ruta_inexistente_usa_el_schema_de_error_unico(client):
     resp = client.get("/ruta-que-no-existe")
     assert resp.status_code == 404

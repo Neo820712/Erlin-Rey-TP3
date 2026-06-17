@@ -98,6 +98,8 @@ def detalle_activo(activo_id: int, session: Session = Depends(get_session)):
         ).first()
         if ultimo is not None:
             setattr(senales, tipo, ultimo.senal)
+            if tipo == "tecnico":
+                senales.score = ultimo.score
     return ActivoDetalle(**activo.model_dump(), senales_recientes=senales)
 
 
@@ -135,6 +137,37 @@ def crear_analisis(activo_id: int, data: AnalisisCreate, session: Session = Depe
     session.commit()
     session.refresh(analisis)
     logger.info("201 análisis creado id=%s activo=%s senal=%s", analisis.id, activo_id, analisis.senal)
+    return analisis
+
+
+@app.post(
+    "/activos/{activo_id}/analisis/tecnico",
+    response_model=Analisis,
+    status_code=status.HTTP_201_CREATED,
+)
+def crear_analisis_tecnico(activo_id: int, session: Session = Depends(get_session)):
+    activo = _activo_o_404(activo_id, session)
+    stdout = _correr_script("scripts.score_tecnico", activo.ticker)
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        logger.error("salida no-JSON de scripts.score_tecnico: %r", stdout[:500])
+        raise HTTPException(status_code=500, detail={"message": "Respuesta inválida del cálculo técnico."})
+    if "error" in data:
+        raise HTTPException(status_code=400, detail={"message": data["error"]})
+    analisis = Analisis(
+        tipo="tecnico",
+        senal=data["senal"],
+        confianza=data["confianza"],
+        resumen=data["resumen"],
+        score=data["score"],
+        activo_id=activo_id,
+        created_at=_ahora_iso(),
+    )
+    session.add(analisis)
+    session.commit()
+    session.refresh(analisis)
+    logger.info("201 análisis técnico id=%s activo=%s score=%s", analisis.id, activo_id, analisis.score)
     return analisis
 
 
