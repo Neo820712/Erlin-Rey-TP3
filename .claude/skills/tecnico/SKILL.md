@@ -1,9 +1,9 @@
 ---
-name: generar-senal
-description: Genera una señal de análisis técnico (RSI/MACD/SMA) para un activo del dashboard y la persiste vía la API. Usar cuando se invoca /generar-senal TICKER [tipo].
+name: tecnico
+description: Genera y persiste un análisis técnico (RSI/MACD/SMA, score 0-100) para un activo de la cartera vía la API. Usar cuando se invoca /tecnico TICKER.
 ---
 
-# /generar-senal
+# /tecnico
 
 Genera un análisis técnico real para un activo monitoreado y lo persiste en la base, llamando a
 la API del dashboard. Materializa el ciclo ReAct (think -> act -> observe).
@@ -11,12 +11,10 @@ la API del dashboard. Materializa el ciclo ReAct (think -> act -> observe).
 ## Interfaz
 
 ```
-/generar-senal TICKER [tipo]
+/tecnico TICKER
 ```
 
 - `TICKER` — símbolo del activo (case-insensitive), debe existir en la base.
-- `tipo` — `tecnico` (default) | `sentimiento`. `sentimiento` no está implementado: el script
-  devuelve `400 - "tipo sentimiento no implementado en esta versión"`.
 
 ## Ejecución (delgada)
 
@@ -26,14 +24,14 @@ score y la señal vive en `scripts/score_tecnico.py` (compartido con el endpoint
 `POST /activos/{id}/analisis/tecnico`). La skill orquesta y reporta; no duplica esa lógica.
 
 ### Think
-Leer `TICKER` y `tipo`. Tener presentes los modos de fallo que el script puede devolver: backend
-caído, ticker inexistente, `tipo sentimiento` (400), sin precios en la tabla precios.
+Leer `TICKER`. Tener presentes los modos de fallo que el script puede devolver: backend caído,
+ticker inexistente, sin precios en la tabla precios.
 
 ### Act
 Ejecutar el script:
 
 ```bash
-uv run python scripts/generar_senal.py TICKER [tipo]
+uv run python scripts/generar_senal.py TICKER
 ```
 
 El script lee precios de la tabla `precios` (persistidos por Actualizar), calcula RSI(14) /
@@ -44,8 +42,8 @@ Leer la salida estructurada del script y reportar al usuario:
 
 - Éxito (`201`): ticker, tipo, **score** (0-100), **señal**, confianza (como %), resumen,
   `id` del análisis creado, y la procedencia de los precios (tabla `precios`, ultimo Actualizar).
-- Error: la causa legible (backend caído / ticker no encontrado / sentimiento no implementado /
-  sin precios). No inventar un resultado: si el script falló, reportar el fallo.
+- Error: la causa legible (backend caído / ticker no encontrado / sin precios). No inventar un
+  resultado: si el script falló, reportar el fallo.
 
 El cómputo vive en `scripts/score_tecnico.py` (compartido con `POST /activos/{id}/analisis/tecnico`).
 
