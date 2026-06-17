@@ -1,5 +1,3 @@
-from collections import Counter
-
 import pandas as pd
 
 
@@ -25,36 +23,50 @@ def macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
     return macd_line, signal_line
 
 
-def _voto_rsi(valor: float) -> str:
-    if valor < 30:
+def _score_rsi(rsi_val: float) -> float:
+    if rsi_val <= 30:
+        return 90.0
+    if rsi_val <= 45:
+        return 100.0
+    if rsi_val <= 55:
+        return 70.0
+    if rsi_val <= 65:
+        return 45.0
+    if rsi_val <= 70:
+        return 25.0
+    return 5.0
+
+
+def _score_tendencia(precio: float, sma20: float, sma50: float) -> float:
+    s = 0.0
+    if precio > sma50:
+        s += 50.0
+    if sma20 > sma50:
+        s += 50.0
+    return s
+
+
+def _score_macd(hist_actual: float, hist_previo: float) -> float:
+    s = 50.0
+    if hist_actual > hist_previo:
+        s += 30.0
+    elif hist_actual < hist_previo:
+        s -= 15.0
+    if hist_actual > 0:
+        s += 20.0
+    return max(0.0, min(100.0, s))
+
+
+def _senal_desde_score(score: float) -> str:
+    if score >= 66:
         return "compra"
-    if valor > 70:
+    if score < 33:
         return "venta"
     return "hold"
 
 
-def _voto_macd(macd_val: float, signal_val: float) -> str:
-    if macd_val > signal_val:
-        return "compra"
-    if macd_val < signal_val:
-        return "venta"
-    return "hold"
-
-
-def _voto_sma(sma_corta: float, sma_larga: float) -> str:
-    if sma_corta > sma_larga:
-        return "compra"
-    if sma_corta < sma_larga:
-        return "venta"
-    return "hold"
-
-
-def _voto_mayoria(votos: list[str]) -> tuple[str, float]:
-    conteo = Counter(votos)
-    senal, n = conteo.most_common(1)[0]
-    if n == 1:  # los tres votan distinto: sin mayoria
-        return "hold", 0.33
-    return senal, round(n / 3, 2)
+def _confianza_desde_score(score: float) -> float:
+    return round(abs(score - 50) * 2 / 100, 2)
 
 
 def analizar(close: pd.Series) -> dict:
@@ -67,24 +79,32 @@ def analizar(close: pd.Series) -> dict:
     macd_line, signal_line = macd(close)
     macd_val = float(macd_line.iloc[-1])
     signal_val = float(signal_line.iloc[-1])
+    hist = macd_line - signal_line
+    hist_actual = float(hist.iloc[-1])
+    hist_previo = float(hist.iloc[-2])
     sma20 = float(sma(close, 20).iloc[-1])
     sma50 = float(sma(close, 50).iloc[-1])
+    precio = float(close.iloc[-1])
 
-    v_rsi = _voto_rsi(rsi_val)
-    v_macd = _voto_macd(macd_val, signal_val)
-    v_sma = _voto_sma(sma20, sma50)
-    senal, confianza = _voto_mayoria([v_rsi, v_macd, v_sma])
+    s_rsi = _score_rsi(rsi_val)
+    s_tend = _score_tendencia(precio, sma20, sma50)
+    s_macd = _score_macd(hist_actual, hist_previo)
+    score = round(0.40 * s_rsi + 0.30 * s_tend + 0.30 * s_macd, 1)
+    senal = _senal_desde_score(score)
+    confianza = _confianza_desde_score(score)
 
-    rel = ">" if sma20 > sma50 else "<" if sma20 < sma50 else "="
+    tend_txt = "alcista" if s_tend >= 100 else "mixta" if s_tend == 50 else "bajista"
+    hist_dir = "creciente" if hist_actual > hist_previo else "decreciente" if hist_actual < hist_previo else "plano"
     resumen = (
-        f"RSI {rsi_val:.1f} ({v_rsi}), "
-        f"MACD {macd_val:.2f} vs senal {signal_val:.2f} ({v_macd}), "
-        f"SMA20 {sma20:.2f} {rel} SMA50 {sma50:.2f} ({v_sma}) "
-        f"-> {senal} por mayoria"
+        f"Score {score:.0f}/100 ({senal}). "
+        f"RSI {rsi_val:.1f} [{s_rsi:.0f}], "
+        f"Tendencia {tend_txt} [{s_tend:.0f}], "
+        f"MACD hist {hist_actual:+.2f} {hist_dir} [{s_macd:.0f}]"
     )
     return {
         "senal": senal,
         "confianza": confianza,
+        "score": score,
         "resumen": resumen,
         "rsi": rsi_val,
         "macd": macd_val,

@@ -5,7 +5,7 @@ from scripts.indicators import analizar, macd, rsi, sma
 
 def test_sma_calcula_promedio_movil():
     s = pd.Series([1, 2, 3, 4, 5], dtype=float)
-    assert sma(s, 3).iloc[-1] == 4.0  # (3+4+5)/3
+    assert sma(s, 3).iloc[-1] == 4.0
 
 
 def test_rsi_sube_con_tendencia_alcista():
@@ -24,33 +24,53 @@ def test_macd_linea_sobre_senal_en_tendencia_alcista():
     assert macd_line.iloc[-1] > signal_line.iloc[-1]
 
 
-def test_analizar_mayoria_da_estructura_valida():
+def test_score_rsi_buckets():
+    from scripts.indicators import _score_rsi
+    assert _score_rsi(20) == 90
+    assert _score_rsi(40) == 100
+    assert _score_rsi(50) == 70
+    assert _score_rsi(60) == 45
+    assert _score_rsi(68) == 25
+    assert _score_rsi(80) == 5
+
+
+def test_score_tendencia():
+    from scripts.indicators import _score_tendencia
+    assert _score_tendencia(110, 105, 100) == 100
+    assert _score_tendencia(90, 95, 100) == 0
+    assert _score_tendencia(110, 95, 100) == 50
+
+
+def test_score_macd():
+    from scripts.indicators import _score_macd
+    assert _score_macd(1.0, 0.5) == 100   # crece (+30) y >0 (+20)
+    assert _score_macd(-0.5, -0.2) == 35  # baja (-15), <0
+    assert _score_macd(0.5, 0.5) == 70    # plano, >0 (+20)
+
+
+def test_senal_desde_score():
+    from scripts.indicators import _senal_desde_score
+    assert _senal_desde_score(70) == "compra"
+    assert _senal_desde_score(50) == "hold"
+    assert _senal_desde_score(20) == "venta"
+
+
+def test_confianza_desde_score():
+    from scripts.indicators import _confianza_desde_score
+    assert _confianza_desde_score(50) == 0.0
+    assert _confianza_desde_score(100) == 1.0
+    assert _confianza_desde_score(10) == 0.8
+
+
+def test_analizar_incluye_score_y_coherencia():
     s = pd.Series(range(1, 80), dtype=float)
     r = analizar(s)
+    assert 0 <= r["score"] <= 100
     assert r["senal"] in {"compra", "venta", "hold"}
-    assert r["confianza"] in {0.33, 0.67, 1.0}
-    assert isinstance(r["resumen"], str) and r["resumen"]
-
-
-def test_voto_mayoria_empate_a_tres_da_hold_033():
-    from scripts.indicators import _voto_mayoria
-    senal, confianza = _voto_mayoria(["compra", "venta", "hold"])
-    assert senal == "hold"
-    assert confianza == 0.33
-
-
-def test_voto_mayoria_unanimidad_da_confianza_uno():
-    from scripts.indicators import _voto_mayoria
-    senal, confianza = _voto_mayoria(["compra", "compra", "compra"])
-    assert senal == "compra"
-    assert confianza == 1.0
-
-
-def test_voto_mayoria_dos_tercios():
-    from scripts.indicators import _voto_mayoria
-    senal, confianza = _voto_mayoria(["venta", "venta", "compra"])
-    assert senal == "venta"
-    assert confianza == 0.67
+    assert r["confianza"] == round(abs(r["score"] - 50) * 2 / 100, 2)
+    assert "Score" in r["resumen"]
+    for k in ("rsi", "macd", "signal", "sma20", "sma50"):
+        assert k in r
 
 
 def test_analizar_serie_corta_falla():
