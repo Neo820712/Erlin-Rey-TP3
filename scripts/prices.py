@@ -1,118 +1,61 @@
-import os
-import re
-import sys
-
 import pandas as pd
+from sqlmodel import Session, SQLModel, select
 
-CACHE_DIR = os.path.join("data", "prices_cache")
-_TICKER_VALIDO = re.compile(r"[A-Za-z0-9.\-]+")
-
-
-def _cache_path(ticker: str) -> str:
-    if not _TICKER_VALIDO.fullmatch(ticker):
-        raise ValueError(f"ticker invalido: {ticker!r}")
-    return os.path.join(CACHE_DIR, f"{ticker.upper()}.csv")
-
-
-def _desde_cache(ticker: str):
-    path = _cache_path(ticker)
-    if not os.path.exists(path):
-        return None
-    df = pd.read_csv(path)
-    if df.empty or "Close" not in df.columns or "Date" not in df.columns:
-        return None
-    df["Date"] = pd.to_datetime(df["Date"], utc=True, errors="coerce")
-    df = df.dropna(subset=["Date"]).set_index("Date")
-    if df.empty:
-        return None
-    fecha = df.index[-1].strftime("%Y-%m-%d")
-    return df["Close"], "cache", fecha
-
-
-def _desde_red(ticker: str):
-    import yfinance as yf
-
-    df = yf.Ticker(ticker).history(period="1y")
-    if df is None or df.empty or "Close" not in df.columns:
-        return None
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    salida = df[["Close"]].copy()
-    salida.index.name = "Date"
-    salida.to_csv(_cache_path(ticker))
-    fecha = df.index[-1].strftime("%Y-%m-%d")
-    return df["Close"], "red", fecha
-
-
-def obtener_precios(ticker: str):
-    """Devuelve (close: pd.Series, procedencia: 'cache'|'red'|'none', fecha: str|None).
-
-    Cascada: usa el CSV cacheado si existe; si no, baja de yfinance y lo cachea;
-    si la red falla, devuelve (None, 'none', None).
-    """
-    cacheado = _desde_cache(ticker)
-    if cacheado is not None:
-        return cacheado
-    try:
-        red = _desde_red(ticker)
-        if red is not None:
-            return red
-    except Exception as e:
-        print(f"aviso: fallo al obtener precios de {ticker}: {e}", file=sys.stderr)
-    return None, "none", None
-
+from backend.database import engine
+from backend.models import Precio
 
 _OHLC_COLS = ["Open", "High", "Low", "Close", "Volume"]
 
 
-def _ohlc_cache_path(ticker: str) -> str:
-    if not _TICKER_VALIDO.fullmatch(ticker):
-        raise ValueError(f"ticker invalido: {ticker!r}")
-    return os.path.join(CACHE_DIR, f"{ticker.upper()}_ohlc.csv")
+def filas_precio_desde_df(ticker: str, df: pd.DataFrame) -> list[dict]:
+    """Convierte un DataFrame OHLCV (indexado por fecha) en filas para la tabla precios."""
+    filas = []
+    for fecha, row in df.iterrows():
+        vol = row["Volume"]
+        filas.append(
+            {
+                "ticker": ticker.upper(),
+                "fecha": fecha.strftime("%Y-%m-%d"),
+                "open": round(float(row["Open"]), 4),
+                "high": round(float(row["High"]), 4),
+                "low": round(float(row["Low"]), 4),
+                "close": round(float(row["Close"]), 4),
+                "volumen": None if pd.isna(vol) else int(vol),
+            }
+        )
+    return filas
 
 
-def _ohlc_desde_cache(ticker: str):
-    path = _ohlc_cache_path(ticker)
-    if not os.path.exists(path):
-        return None
-    df = pd.read_csv(path)
-    if df.empty or "Date" not in df.columns or any(c not in df.columns for c in _OHLC_COLS):
-        return None
-    df["Date"] = pd.to_datetime(df["Date"], utc=True, errors="coerce")
-    df = df.dropna(subset=["Date"]).set_index("Date")
-    if df.empty:
-        return None
-    fecha = df.index[-1].strftime("%Y-%m-%d")
-    return df[_OHLC_COLS], "cache", fecha
+def guardar_ohlc(filas: list[dict], eng=engine) -> int:
+    """Reescribe la tabla precios completa: la descarta, la recrea e inserta las filas dadas.
+    Mismo patron de snapshot que mercado.persistir. Devuelve cuantas filas escribio."""
+    Precio.__table__.drop(eng, checkfirst=True)
+    SQLModel.metadata.create_all(eng)
+    with Session(eng) as session:
+        for f in filas:
+            session.add(Precio(**f))
+        session.commit()
+    return len(filas)
 
 
-def _ohlc_desde_red(ticker: str):
-    import yfinance as yf
-
-    df = yf.Ticker(ticker).history(period="1y")
-    if df is None or df.empty or any(c not in df.columns for c in _OHLC_COLS):
-        return None
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    salida = df[_OHLC_COLS].copy()
-    salida.index.name = "Date"
-    salida.to_csv(_ohlc_cache_path(ticker))
-    fecha = df.index[-1].strftime("%Y-%m-%d")
-    return df[_OHLC_COLS], "red", fecha
-
-
-def obtener_ohlc(ticker: str, periodo: str = "1y"):
-    """Devuelve (df_ohlcv: DataFrame[Open,High,Low,Close,Volume], procedencia, fecha).
-
-    Cascada cache -> red -> none, analoga a obtener_precios pero con OHLCV completo y cache propia.
-    El parametro `periodo` se reserva para el recorte de la ventana en el llamador; la descarga
-    siempre baja 1y para que los indicadores (SMA50) tengan historia suficiente.
-    """
-    cacheado = _ohlc_desde_cache(ticker)
-    if cacheado is not None:
-        return cacheado
-    try:
-        red = _ohlc_desde_red(ticker)
-        if red is not None:
-            return red
-    except Exception as e:
-        print(f"aviso: fallo al obtener OHLC de {ticker}: {e}", file=sys.stderr)
-    return None, "none", None
+def obtener_ohlc(ticker: str, periodo: str = "1y", eng=engine):
+    """Devuelve (df_ohlcv, procedencia, fecha) leyendo de la tabla precios.
+    procedencia 'db' si hay filas, 'none' si no. `periodo` se reserva para el recorte en el llamador."""
+    with Session(eng) as session:
+        filas = session.exec(
+            select(Precio).where(Precio.ticker == ticker.upper()).order_by(Precio.fecha)
+        ).all()
+    if not filas:
+        return None, "none", None
+    df = pd.DataFrame(
+        {
+            "Open": [f.open for f in filas],
+            "High": [f.high for f in filas],
+            "Low": [f.low for f in filas],
+            "Close": [f.close for f in filas],
+            "Volume": [f.volumen for f in filas],
+        },
+        index=pd.to_datetime([f.fecha for f in filas], utc=True),
+    )
+    df.index.name = "Date"
+    return df[_OHLC_COLS], "db", filas[-1].fecha
