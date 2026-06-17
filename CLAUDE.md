@@ -85,55 +85,17 @@ data/
 
 ## Reglas de arquitectura
 
-- **`openapi.yaml` es la fuente de verdad.** Si hay que cambiar un endpoint (path, schema, status
-  code), **se edita primero el `openapi.yaml` y después el código** — nunca al revés. El backend
-  deriva del contrato, no lo contrario.
-- **Schema de error único** en todo el sistema: `{ "message": "..." }` para 400, 404 y 500. Se
-  emite con `HTTPException(status_code=..., detail={"message": "..."})`.
+Invariantes cross-cutting. El detalle de backend vive en `rules/backend.md` y el de frontend en
+`rules/frontend.md`.
+
+- **`openapi.yaml` es la fuente de verdad.** Si cambia un endpoint (path, schema, status code), se
+  edita primero el `openapi.yaml` y después el código — nunca al revés.
+- **El backend es solo CRUD.** Nada de yfinance ni pandas en `backend/`; todo lo que descarga
+  precios o calcula indicadores vive en `scripts/` (que el backend lanza como subprocesos).
+- **Fuente única de precios:** yfinance solo corre en `POST /mercado/actualizar`, que persiste
+  OHLC en la tabla `precios`. `/historico` y el score leen de `precios`, nunca de red.
 - **CORS** habilitado solo para `http://localhost:3000` (origen del frontend). Por eso el frontend
   se **sirve** en ese puerto, no se abre con `file://`.
-- **El backend no toca el dominio financiero externo.** Nada de yfinance ni pandas en `backend/`;
-  todo lo que descarga precios o calcula indicadores vive en `scripts/`. El backend es solo CRUD.
-- **Fuente unica de precios:** yfinance solo corre en `POST /mercado/actualizar`, que persiste
-  OHLC en la tabla `precios`. `/historico` y el score leen de `precios`, nunca de red.
-- **El backend no descarga datos de mercado:** `POST /mercado/actualizar` y
-  `GET /mercado/{ticker}/historico` lanzan `scripts/mercado.py` e `scripts/historico.py` como
-  subprocesos (stdout JSON). La tabla `mercado_cedears` guarda el snapshot sin senal/rsi
-  (esos campos son `None`). `POST /activos/{id}/analisis/tecnico` (en cartera, persiste) y
-  `GET /mercado/{ticker}/tecnico` (fuera de cartera, sin persistir) lanzan
-  `scripts.score_tecnico` como subproceso; el backend no computa, solo el primero guarda.
-- **Foreign key con borrado en cascada.** SQLite no aplica FK por defecto: el engine emite
-  `PRAGMA foreign_keys=ON` por conexión. Borrar un activo borra sus análisis.
-
-## Convenciones de backend
-
-- **Tres modelos por recurso:** `XxxBase` (campos comunes), `XxxCreate(XxxBase)` (body del POST,
-  sin `id`), `Xxx(XxxBase, table=True)` (tabla, con `id`).
-- **Status codes:** `200` GET, `201` POST que creó, `204` DELETE sin body, `400` body inválido,
-  `404` no existe, `500` error interno.
-- **Errores** siempre con `HTTPException` y el schema `{ "message" }`.
-- **Sesión de DB por dependency injection** (`Depends`), nunca una sesión global.
-- **`logging`, nunca `print()`.** Cada request relevante deja una línea; los errores de integridad
-  muestran la causa.
-- **La ruta de la DB no se hardcodea:** se lee de `DATABASE_URL` (definida en el `env` del
-  `settings.json`).
-- **`PYTHONPATH=.` ya está en el `env` del `settings.json`,** así los imports de `scripts/` y
-  `backend/` funcionan sin instalar el proyecto como paquete.
-
-## Convenciones de frontend
-
-- Vanilla JS, **single-file** (`frontend/index.html`): HTML + `<style>` + `<script>` juntos. Sin
-  frameworks, sin build, sin `node_modules`.
-- **Triángulo `state` -> `render()` -> eventos:** el `state` es la única fuente de verdad; tras
-  cualquier mutación de `state` se llama a `render()` (única función que toca el DOM).
-- Todo `fetch` maneja **loading, éxito y error** con `try/catch/finally`; el error se muestra al
-  usuario, nunca se traga en silencio.
-- **Custom properties para todos los colores** (paleta Intel + colores de señal en `:root`); no
-  hardcodear hex en las reglas.
-- **Flexbox/Grid** para el layout, nunca `float`.
-- **No usar `innerHTML` con datos del servidor sin sanitizar** (riesgo XSS).
-- **Cartera por checkbox:** el usuario marca/desmarca activos desde la tabla de mercado; no hay
-  formulario de alta independiente.
 
 ## Skill `/generar-senal`
 

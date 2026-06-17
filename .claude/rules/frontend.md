@@ -20,6 +20,8 @@ paths: ["frontend/**/*.{html,js,css}"]
   filtrar los puntos nulos antes de `setData`.
 - **Vista por `state.view`:** `render()` despacha entre dashboard y detalle; sigue siendo la única
   función que toca el DOM.
+- **Cartera por checkbox:** el usuario marca/desmarca activos desde la tabla de mercado; no hay
+  formulario de alta independiente.
 
 ## Triángulo state -> render() -> eventos
 
