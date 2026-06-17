@@ -22,14 +22,7 @@ def _post(path: str, payload: dict):
         return resp.status, json.loads(resp.read().decode("utf-8"))
 
 
-def generar(ticker: str, tipo: str = "tecnico") -> int:
-    if tipo == "sentimiento":
-        print("400 - tipo sentimiento no implementado en esta version")
-        return 2
-    if tipo != "tecnico":
-        print(f"400 - tipo invalido: {tipo} (use tecnico)")
-        return 2
-
+def generar(ticker: str) -> int:
     try:
         activos = _get("/activos")
     except OSError:
@@ -73,11 +66,10 @@ def generar(ticker: str, tipo: str = "tecnico") -> int:
 
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
-        print("Uso: generar_senal.py TICKER [tipo]")
+        print("Uso: generar_senal.py TICKER")
         return 2
     ticker = argv[1]
-    tipo = argv[2] if len(argv) > 2 else "tecnico"
-    return generar(ticker, tipo)
+    return generar(ticker)
 
 
 if __name__ == "__main__":

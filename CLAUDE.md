@@ -2,7 +2,7 @@
 
 API REST + dashboard web que expone una versión reducida del sistema de análisis de activos
 de la tesis de grado. El usuario monitorea acciones, ve señales de análisis técnico y dispara
-nuevos análisis desde Claude Code con el slash command `/generar-senal`, que calcula indicadores
+nuevos análisis desde Claude Code con el slash command `/tecnico`, que calcula indicadores
 técnicos reales (RSI, MACD, SMA) sobre precios históricos.
 
 ## Stack
@@ -16,27 +16,6 @@ técnicos reales (RSI, MACD, SMA) sobre precios históricos.
 | Tooling | uv |
 | Tests | pytest |
 
-## Comandos clave
-
-```bash
-# Demo: levanta backend + frontend y abre el dashboard (doble click en Windows)
-start.bat
-
-# Backend (API en http://localhost:8000)
-uv run uvicorn backend.main:app --reload --port 8000
-
-# Frontend (dashboard en http://localhost:3000), desde la carpeta frontend/
-python -m http.server 3000
-
-# Poblar la base con activos y análisis de ejemplo (idempotente)
-uv run python scripts/seed.py
-
-# Descargar/actualizar el snapshot de mercado (offline, antes de la demo)
-uv run python -m scripts.mercado
-
-# Tests
-uv run pytest
-```
 
 Documentación Swagger autogenerada: http://localhost:8000/docs (sirve para verificar que la
 implementación matchea el `openapi.yaml`).
@@ -55,8 +34,8 @@ pyproject.toml           dependencias (uv)
     backend.md           reglas para backend/**/*.py
     frontend.md          reglas para frontend/**
   skills/
-    generar-senal/
-      SKILL.md           slash command /generar-senal (ReAct)
+    tecnico/
+      SKILL.md           slash command /tecnico (ReAct)
 backend/                 SOLO CRUD, no importa yfinance/pandas
   main.py                app FastAPI, routes, CORS
   models.py              SQLModel (Activo, Analisis + variantes Create)
@@ -97,18 +76,31 @@ Invariantes cross-cutting. El detalle de backend vive en `rules/backend.md` y el
 - **CORS** habilitado solo para `http://localhost:3000` (origen del frontend). Por eso el frontend
   se **sirve** en ese puerto, no se abre con `file://`.
 
-## Skill `/generar-senal`
 
-`/generar-senal TICKER [tipo]` — `tipo` = `tecnico` (default) | `sentimiento`.
+## Reglas de estructura y seguridad
 
-Implementa el ciclo ReAct (think -> act -> observe) y **delega el cálculo a `scripts/`**: el cuerpo
+- **Actualización documental:** al crear carpetas o módulos que cambien la arquitectura principal, actualiza la estructura en este archivo; ignora scripts menores o de prueba para evitar ruido.
+- **Archivos excluidos:** queda prohibido leer, modificar o generar archivos `.env` o similares; los secretos se manejan de forma manual.
+- **Archivos binarios:** no intentes leer archivos `.db` o `.sqlite` en texto plano; usa scripts de Python para inspeccionar los datos.
+- **Prevención de pérdida:** no alteres el archivo `.gitignore` ni elimines archivos de código existentes sin validación previa.
+
+
+## Comandos y Validación
+
+- **Testing estricto:** Tras cualquier modificación en `backend/` o `scripts/`, debes ejecutar `uv run pytest` y leer la salida antes de dar la tarea por terminada.
+
+
+
+## Skill `/tecnico`
+
+`/tecnico TICKER`.
+
+- Implementa el ciclo ReAct (think -> act -> observe) y **delega el cálculo a `scripts/`**: el cuerpo
 de la skill orquesta, pero quien computa el score es `scripts/score_tecnico.py` (compartido con el
 endpoint `POST /activos/{id}/analisis/tecnico`). El resultado incluye el score 0-100, la senal
 derivada y la confianza.
 
-`tipo sentimiento` **no está implementado**: el script devuelve `400 - "tipo sentimiento no
-implementado en esta versión"`. El enum y el `openapi.yaml` igual lo contemplan; la restricción
-vive solo en el script.
+
 
 ## Flujo de trabajo (GitHub Flow)
 
