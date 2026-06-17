@@ -147,6 +147,8 @@ def crear_analisis(activo_id: int, data: AnalisisCreate, session: Session = Depe
 )
 def crear_analisis_tecnico(activo_id: int, session: Session = Depends(get_session)):
     activo = _activo_o_404(activo_id, session)
+    if not _TICKER_VALIDO.fullmatch(activo.ticker):
+        raise HTTPException(status_code=400, detail={"message": "Ticker inválido."})
     stdout = _correr_script("scripts.score_tecnico", activo.ticker)
     try:
         data = json.loads(stdout)
@@ -238,10 +240,13 @@ def historico_mercado(ticker: str, periodo: str = "3m"):
         raise HTTPException(status_code=400, detail={"message": "Ticker inválido."})
     stdout = _correr_script("scripts.historico", ticker, periodo)
     try:
-        return json.loads(stdout)
+        data = json.loads(stdout)
     except json.JSONDecodeError:
         logger.error("salida no-JSON de scripts.historico: %r", stdout[:500])
         raise HTTPException(status_code=500, detail={"message": "Respuesta inválida del proceso de histórico."})
+    if "error" in data:
+        raise HTTPException(status_code=400, detail={"message": f"No hay precios para {ticker}. Corré Actualizar primero."})
+    return data
 
 
 @app.get("/mercado/{ticker}/fundamentales", response_model=MercadoCedear)

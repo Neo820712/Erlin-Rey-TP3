@@ -71,7 +71,7 @@ def main(argv: list[str]) -> int:
     df, procedencia, _ = obtener_ohlc(ticker, periodo)
     if procedencia == "none":
         print(json.dumps({"error": f"sin datos OHLC para {ticker}"}))
-        return 1
+        return 0
     print(json.dumps(construir_historico(df, periodo)))
     return 0
 

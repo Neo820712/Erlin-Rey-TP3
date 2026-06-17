@@ -264,7 +264,7 @@
       try {
         state.cedears = await api('/mercado/catalogo');
       } catch (e) {
-        state.cedears = [];  // el autocompletado queda vacío pero el alta manual sigue funcionando
+        state.cedears = [];  // solo afecta al lookup tipo/mercado del checkbox de cartera
       }
     }
 
@@ -350,7 +350,7 @@
           </div>
           <div class="meta">${esc(activo.tipo)} · ${esc(activo.mercado)}</div>
           <div class="badges">
-            <span class="badge ${claseSenal(sr.tecnico)}"><span class="etq">Tecnico</span>${esc(sr.tecnico ? sr.tecnico + scoreTxt : 'sin datos')}</span>
+            <span class="badge ${claseSenal(sr.tecnico)}"><span class="etq">Técnico</span>${esc(sr.tecnico ? sr.tecnico + scoreTxt : 'sin datos')}</span>
             ${badgeHTML('Sentim.', sr.sentimiento)}
           </div>
         </div>`;
