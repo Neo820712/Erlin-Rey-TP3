@@ -8,9 +8,13 @@ _OHLC_COLS = ["Open", "High", "Low", "Close", "Volume"]
 
 
 def filas_precio_desde_df(ticker: str, df: pd.DataFrame) -> list[dict]:
-    """Convierte un DataFrame OHLCV (indexado por fecha) en filas para la tabla precios."""
+    """Convierte un DataFrame OHLCV (indexado por fecha) en filas para la tabla precios.
+    Descarta las filas con algun OHLC nulo: yfinance devuelve NaN en fechas sin dato y
+    las columnas open/high/low/close son NOT NULL."""
     filas = []
     for fecha, row in df.iterrows():
+        if row[["Open", "High", "Low", "Close"]].isna().any():
+            continue
         vol = row["Volume"]
         filas.append(
             {

@@ -29,6 +29,14 @@ def test_filas_precio_desde_df():
     assert filas[0]["volumen"] == 1000
 
 
+def test_filas_precio_descarta_filas_con_ohlc_nan():
+    df = _df(3)
+    df.iloc[1, [df.columns.get_loc(c) for c in ("Open", "High", "Low", "Close")]] = np.nan
+    filas = prices.filas_precio_desde_df("AAPL", df)
+    assert len(filas) == 2
+    assert all(f["close"] is not None for f in filas)
+
+
 def test_guardar_y_obtener_ohlc_roundtrip():
     eng = _engine()
     filas = prices.filas_precio_desde_df("AAPL", _df(60))
