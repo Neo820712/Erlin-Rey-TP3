@@ -33,6 +33,7 @@ pyproject.toml           dependencias (uv)
   rules/
     backend.md           reglas para backend/**/*.py
     frontend.md          reglas para frontend/**
+    scripts.md           reglas para scripts/**/*.py
   skills/
     tecnico/
       SKILL.md           slash command /tecnico (ReAct)
@@ -51,7 +52,7 @@ scripts/                 capa de análisis (todo lo que toca red/cálculo)
 frontend/
   index.html             dashboard single-file (servido en :3000)
 tests/
-  test_api.py            los 7 endpoints
+  test_api.py            los endpoints de la API (contrato en openapi.yaml)
   test_indicators.py     cálculo de indicadores
   test_mercado.py        endpoints /mercado y modelo MercadoCedear
   test_prices.py         obtener_ohlc (lectura de la tabla precios)
@@ -64,8 +65,8 @@ data/
 
 ## Reglas de arquitectura
 
-Invariantes cross-cutting. El detalle de backend vive en `rules/backend.md` y el de frontend en
-`rules/frontend.md`.
+Invariantes cross-cutting. El detalle de backend vive en `rules/backend.md`, el de frontend en
+`rules/frontend.md` y el de la capa de dominio en `rules/scripts.md`.
 
 - **`openapi.yaml` es la fuente de verdad.** Si cambia un endpoint (path, schema, status code), se
   edita primero el `openapi.yaml` y después el código — nunca al revés.
@@ -85,21 +86,41 @@ Invariantes cross-cutting. El detalle de backend vive en `rules/backend.md` y el
 - **Prevención de pérdida:** no alteres el archivo `.gitignore` ni elimines archivos de código existentes sin validación previa.
 
 
-## Comandos y Validación
+## Comandos y Validación (Obligatorio)
 
-- **Testing estricto:** Tras cualquier modificación en `backend/` o `scripts/`, debes ejecutar `uv run pytest` y leer la salida antes de dar la tarea por terminada.
+### Levantar el proyecto
 
+- **Todo junto (Windows):** `start.bat` — backend en :8000, frontend en :3000 y abre el dashboard.
+- **Backend (API + Swagger):** `uv run uvicorn backend.main:app --reload --port 8000`
+- **Frontend:** desde `frontend/`, `python -m http.server 3000`. Debe servirse en :3000 (único
+  origen con CORS); abierto con `file://` las llamadas a la API fallan.
+
+### Datos
+
+- **Poblar la base:** `uv run python scripts/seed.py` (idempotente; úsalo si necesitas datos de prueba).
+- **Actualizar mercado:** `uv run python -m scripts.mercado` (refresca CEDEARs y la tabla `precios`).
+
+### Validación
+
+- **Testing estricto:** tras cualquier modificación en `backend/` o `scripts/`, debes ejecutar
+  `uv run pytest` y leer la salida antes de dar la tarea por terminada.
+- **Cambios de esquema (sin migraciones):** si modificás `backend/models.py`, el esquema de
+  `data/activos.db` queda obsoleto. Debes advertirlo, eliminar el `.db` y recrearlo con `seed.py`.
 
 
 ## Skill `/tecnico`
 
-`/tecnico TICKER`.
+`/tecnico TICKER`. Implementa el ciclo ReAct (think -> act -> observe). El detalle de comportamiento
+vive en `.claude/skills/tecnico/SKILL.md`; acá van los principios:
 
-- Implementa el ciclo ReAct (think -> act -> observe) y **delega el cálculo a `scripts/`**: el cuerpo
-de la skill orquesta, pero quien computa el score es `scripts/score_tecnico.py` (compartido con el
-endpoint `POST /activos/{id}/analisis/tecnico`). El resultado incluye el score 0-100, la senal
-derivada y la confianza.
-
+- **Delegación estricta (act):** el cuerpo de la skill orquesta, pero el cómputo se delega
+  EXCLUSIVAMENTE a `scripts/score_tecnico.py` (compartido con `POST /activos/{id}/analisis/tecnico`).
+  Prohibido usar pandas/yfinance o escribir scripts ad-hoc durante la ejecución.
+- **Salida limpia (think):** el razonamiento es interno; la salida final contiene solo el resultado
+  duro (score 0-100, señal derivada, confianza), sin meta-comentarios sobre el proceso.
+- **Límite de reintentos (observe):** si el script falla, hasta 2 intentos de corregir los parámetros
+  enviados; si vuelve a fallar, abortar el ciclo y devolver el error crudo, conciso y con una pregunta
+  concreta al usuario.
 
 
 ## Flujo de trabajo (GitHub Flow)
@@ -109,6 +130,5 @@ derivada y la confianza.
 
 ## Recordatorios
 
-- **Mantener este archivo cerca de 200 líneas.** Archivos más largos pierden adherencia.
 - **No usar `@import` del `openapi.yaml` en este `CLAUDE.md`:** insertaría el YAML completo en el
   contexto en cada sesión (~3000 tokens innecesarios). Que Claude Code lo lea cuando lo necesite.

@@ -181,6 +181,15 @@
     }
 
     /* ARQUITECTURA (slide interactiva) */
+    .schema-label {
+      font-size: 0.82rem; color: var(--intel-deep-blue); font-weight: 600;
+      display: flex; align-items: center; gap: 0.55rem;
+    }
+    .schema-num {
+      font-family: var(--font-mono); font-size: 0.64rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #fff; background: var(--intel-blue);
+      padding: 2px 8px; border-radius: 999px;
+    }
     .arch-layout { display: grid; grid-template-columns: 1.55fr 1fr; gap: 1.25rem; align-items: stretch; }
     .arch-svg-wrap {
       background: #fff; border: 1px solid var(--card-border); border-radius: 6px; padding: 0.5rem;
@@ -213,25 +222,26 @@
     .edge-label { font-family: var(--font-mono); font-size: 10px; fill: var(--text-muted); opacity: 0; transition: opacity 0.25s ease; }
     .edge-label.on { opacity: 1; fill: var(--intel-blue); }
 
-    /* Panel del controlador de pasos */
-    .arch-panel { display: flex; flex-direction: column; gap: 0.75rem; }
-    .step-card {
-      background: #fff; border: 1px solid var(--card-border); border-top: 4px solid var(--intel-cyan);
-      border-radius: 6px; padding: 1.1rem 1.2rem; flex-grow: 1; display: flex; flex-direction: column; gap: 0.7rem;
+    /* ESQUEMA 2 — circuito de datos, cartera y graficos (interactivo) */
+    .arch2-wrap {
+      background: #fff; border: 1px solid var(--card-border); border-radius: 6px;
+      padding: 0.5rem 0.8rem 0.3rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
-    .step-title { font-size: 1.15rem; font-weight: 700; color: var(--intel-deep-blue); line-height: 1.2; }
-    .step-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
-    .step-chip-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 1px; color: var(--intel-blue); font-weight: 700; }
-    .step-chip {
-      font-family: var(--font-mono); font-size: 0.8rem; color: var(--intel-deep-blue);
-      background: var(--intel-light-gray); border: 1px solid var(--intel-border-gray);
-      border-left: 3px solid var(--intel-blue); border-radius: 3px; padding: 0.55rem 0.7rem; word-break: break-word; line-height: 1.4;
+    .arch2-wrap svg { width: 100%; height: auto; display: block; }
+    .circuit-chips { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.3rem; }
+    .circuit-chip {
+      font-family: var(--font-family); font-size: 0.78rem; font-weight: 700;
+      padding: 0.32rem 0.95rem; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--intel-border-gray); background: #fff; color: var(--text-muted);
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
     }
-    .step-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
-    .step-counter { font-weight: 700; font-size: 0.82rem; color: var(--intel-deep-blue); }
-    .step-dots { display: flex; gap: 5px; }
-    .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--intel-border-gray); transition: background 0.2s ease; }
-    .step-dot.on { background: var(--intel-blue); }
+    .circuit-chip:hover { border-color: var(--intel-blue); color: var(--intel-blue); }
+    .circuit-chip.on { background: var(--intel-blue); border-color: var(--intel-blue); color: #fff; }
+    .edge-w.on { stroke: var(--sig-buy); }
+    .edge-label-w.on { fill: var(--sig-buy); }
+    .m-caption { font-size: 0.74rem; color: var(--text-muted); text-align: center; padding: 0.3rem 0.5rem 0.1rem; line-height: 1.35; min-height: 2.1em; }
+    .m-caption strong { color: var(--intel-deep-blue); }
+    .m-caption .w { color: var(--sig-buy); font-weight: 700; }
 
     /* SUPERPOWERS FLOW */
     .flow-wrap { background: #fff; border: 1px solid var(--card-border); border-radius: 6px; padding: 1rem 1rem 0.6rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
@@ -258,22 +268,7 @@
     .cfg-caption { font-size: 0.82rem; color: var(--text-muted); text-align: center; }
     .cfg-caption code { font-family: var(--font-mono); color: var(--intel-deep-blue); }
 
-    /* RECURSOS TECNICOS (file grid) */
-    .file-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; }
-    .file-card {
-      background: #fff; border: 1px solid var(--card-border); border-radius: 6px; overflow: hidden;
-      display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-    .file-head {
-      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
-      padding: 0.55rem 0.75rem; background: var(--intel-deep-blue); border-bottom: 1px solid #001229;
-    }
-    .file-name { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: #fff; }
-    .file-role { font-size: 0.7rem; color: var(--intel-cyan); font-weight: 600; }
-    .file-snip {
-      font-family: var(--font-mono); font-size: 0.66rem; line-height: 1.45; color: #1f2937;
-      background: var(--intel-light-gray); padding: 0.6rem 0.75rem; margin: 0; white-space: pre; overflow: hidden; flex-grow: 1;
-    }
+    .file-snip { font-family: var(--font-mono); }
     .file-snip .fm { color: var(--intel-blue); }
     .file-snip .cm { color: #6b7280; }
     .file-snip .kw { color: #b91c1c; }
@@ -298,15 +293,6 @@
     .demo-sub { font-family: var(--font-mono); font-size: 1rem; color: #cbd5e1; }
     .demo-sub b { color: var(--intel-cyan); font-weight: 700; }
 
-    /* CIERRE */
-    .checklist { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem 1.5rem; }
-    .checklist li { position: relative; padding-left: 1.7rem; font-size: 0.92rem; color: var(--text-muted); line-height: 1.4; }
-    .checklist li::before {
-      content: '✓'; position: absolute; left: 0; top: -1px; color: #fff; background: var(--sig-buy);
-      width: 1.15rem; height: 1.15rem; border-radius: 3px; font-size: 0.72rem; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .checklist li strong { color: var(--intel-deep-blue); }
     .repo-link {
       display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: 0.92rem;
       color: var(--intel-blue); text-decoration: none; font-weight: 700;
@@ -330,6 +316,26 @@
     .btn-intel-outline:hover { background-color: var(--bg-secondary); border-color: var(--intel-blue); color: var(--intel-blue); }
     .btn-intel:disabled, .btn-intel-outline:disabled { opacity: 0.3; cursor: not-allowed; border-color: var(--intel-border-gray); background: transparent; color: var(--text-muted); }
     .btn-sm { padding: 0.4rem 0.85rem; font-size: 0.75rem; }
+
+    /* Panel del controlador de pasos */
+    .arch-panel { display: flex; flex-direction: column; gap: 0.75rem; }
+    .step-card {
+      background: #fff; border: 1px solid var(--card-border); border-top: 4px solid var(--intel-cyan);
+      border-radius: 6px; padding: 1.1rem 1.2rem; flex-grow: 1; display: flex; flex-direction: column; gap: 0.7rem;
+    }
+    .step-title { font-size: 1.15rem; font-weight: 700; color: var(--intel-deep-blue); line-height: 1.2; }
+    .step-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
+    .step-chip-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 1px; color: var(--intel-blue); font-weight: 700; }
+    .step-chip {
+      font-family: var(--font-mono); font-size: 0.8rem; color: var(--intel-deep-blue);
+      background: var(--intel-light-gray); border: 1px solid var(--intel-border-gray);
+      border-left: 3px solid var(--intel-blue); border-radius: 3px; padding: 0.55rem 0.7rem; word-break: break-word; line-height: 1.4;
+    }
+    .step-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+    .step-counter { font-weight: 700; font-size: 0.82rem; color: var(--intel-deep-blue); }
+    .step-dots { display: flex; gap: 5px; }
+    .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--intel-border-gray); transition: background 0.2s ease; }
+    .step-dot.on { background: var(--intel-blue); }
 
     .progress-container { flex-grow: 1; margin: 0 3rem; display: flex; align-items: center; gap: 1.25rem; }
     .progress-bar-wrapper { height: 3px; background: var(--intel-light-gray); flex-grow: 1; }
@@ -363,7 +369,6 @@
         <div style="flex:1;">
           <div class="hero-badge">TP3 — Defensa final</div>
           <h1 class="hero-title">Dashboard de Análisis de <span>Activos Financieros</span></h1>
-          <p class="hero-subtitle">API REST + dashboard web que expone una versión reducida del sistema de análisis de activos de la tesis de grado: monitoreo de CEDEARs, señales de análisis técnico real (RSI / MACD / SMA) y un slash command propio que dispara los análisis desde Claude Code.</p>
           <div class="hero-meta">
             <div>Materia: <strong>Introducción al Desarrollo de Software Asistido por IA (CEIA — UBA)</strong></div>
             <div>Stack: <strong>FastAPI + SQLModel + SQLite</strong></div>
@@ -377,15 +382,17 @@
       </div>
     </div>
 
-    <!-- SLIDE 2: ARQUITECTURA (interactiva) -->
-    <div class="slide" id="slide-2">
+    <!-- SLIDE 2: ARQUITECTURA (dos esquemas; el orden visual lo fija style="order:N" en cada bloque: datos primero, análisis técnico después) -->
+    <div class="slide" id="slide-2" style="gap:0.7rem;">
       <div class="slide-header">
         <div class="slide-tag">Arquitectura e interacción entre componentes</div>
-        <h2 class="slide-title">Un request de punta a punta: generar una señal técnica</h2>
+        <h2 class="slide-title">Dos circuitos sobre los mismos componentes</h2>
       </div>
-      <div class="arch-layout">
+
+      <div class="schema-label" style="order:3;"><span class="schema-num">Esquema 2</span> Generar una señal técnica — request de punta a punta</div>
+      <div class="arch-layout" style="order:4;">
         <div class="arch-svg-wrap">
-          <svg viewBox="0 0 1000 340" role="img" aria-label="Diagrama de componentes">
+          <svg viewBox="0 0 1000 340" role="img" aria-label="Diagrama de componentes — generar señal">
             <defs>
               <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"></path>
@@ -398,6 +405,8 @@
             <path id="e-api-scripts" class="edge" marker-end="url(#arrow)" d="M550,150 C622,110 652,96 700,92"></path>
             <path id="e-scripts-db" class="edge" marker-end="url(#arrow)" d="M822,140 C818,170 814,182 810,210"></path>
             <text class="edge-label" id="lbl-read" x="828" y="180">lee</text>
+            <path id="e-scripts-api" class="edge" marker-end="url(#arrow)" d="M704,128 C640,168 600,184 556,188"></path>
+            <text class="edge-label" id="lbl-return" x="606" y="176">devuelve</text>
             <path id="e-api-db" class="edge" marker-end="url(#arrow)" d="M456,216 C486,272 566,256 660,252"></path>
             <path id="e-api-client" class="edge" marker-end="url(#arrow)" d="M360,150 C300,120 290,90 204,80"></path>
 
@@ -414,8 +423,8 @@
             </g>
             <g class="node" id="n-api">
               <rect x="360" y="120" width="192" height="96" rx="6"></rect>
-              <text class="n-title" x="456" y="150" text-anchor="middle">API FastAPI</text>
-              <text class="n-sub" x="456" y="170" text-anchor="middle">:8000</text>
+              <text class="n-title" x="456" y="150" text-anchor="middle">Backend · API</text>
+              <text class="n-sub" x="456" y="170" text-anchor="middle">FastAPI · :8000</text>
               <text class="n-sub" x="456" y="188" text-anchor="middle">solo CRUD</text>
             </g>
             <g class="node" id="n-scripts">
@@ -439,7 +448,7 @@
             </g>
           </svg>
           <div class="arch-caption">
-            <strong>Decisión de arquitectura:</strong> el backend es <strong>solo CRUD</strong>. yfinance y el cálculo de indicadores viven en <strong>scripts/</strong>; los precios se leen de la tabla <code>precios</code>, nunca de red.
+            <strong>Decisión de arquitectura:</strong> el backend es <strong>solo CRUD</strong>. yfinance y el cálculo de indicadores viven en <strong>scripts/</strong>; en este flujo los precios se <strong>leen</strong> de la tabla <code>precios</code>, nunca de red.
           </div>
         </div>
 
@@ -458,7 +467,7 @@
             <div class="step-controls">
               <button class="btn-intel btn-intel-outline btn-sm" id="arch-prev">◀ Anterior</button>
               <div style="text-align:center;">
-                <div class="step-counter" id="step-counter">Paso 1 / 6</div>
+                <div class="step-counter" id="step-counter">Paso 1 / 7</div>
                 <div class="step-dots" id="step-dots"></div>
               </div>
               <button class="btn-intel btn-sm" id="arch-next">Siguiente ▶</button>
@@ -466,10 +475,73 @@
           </div>
         </div>
       </div>
+
+      <div class="schema-label" style="order:1;"><span class="schema-num">Esquema 1</span> Datos, cartera y gráficos — tocá un circuito para resaltarlo</div>
+      <div class="arch2-wrap" style="order:2;">
+        <div class="circuit-chips" id="circuit-chips"></div>
+        <svg viewBox="0 0 1000 250" role="img" aria-label="Diagrama de datos, cartera y gráficos">
+          <!-- EDGES -->
+          <path id="e-m-fe-api" class="edge" marker-end="url(#arrow)" d="M174,122 L266,122"></path>
+          <path id="e-m-api-fe" class="edge" marker-end="url(#arrow)" d="M270,150 C228,170 214,170 178,150"></path>
+          <text id="lbl-m-json" class="edge-label" x="208" y="167" text-anchor="middle">JSON</text>
+          <path id="e-m-api-mercado" class="edge" marker-end="url(#arrow)" d="M432,108 C478,80 492,58 516,48"></path>
+          <path id="e-m-mercado-yf" class="edge" marker-end="url(#arrow)" d="M732,47 L788,47"></path>
+          <text id="lbl-m-yf" class="edge-label" x="760" y="38" text-anchor="middle">descarga</text>
+          <path id="e-m-mercado-db" class="edge edge-w" marker-end="url(#arrow)" d="M640,74 C702,84 742,90 800,104"></path>
+          <text id="lbl-m-write" class="edge-label edge-label-w" x="712" y="100" text-anchor="middle">escribe</text>
+          <path id="e-m-api-db" class="edge" marker-end="url(#arrow)" d="M432,126 L788,126"></path>
+          <text id="lbl-m-cartera" class="edge-label" x="600" y="118" text-anchor="middle">lee/escribe</text>
+          <path id="e-m-api-historico" class="edge" marker-end="url(#arrow)" d="M432,146 C478,176 492,192 516,201"></path>
+          <path id="e-m-historico-db" class="edge" marker-end="url(#arrow)" d="M732,200 C768,186 778,180 800,150"></path>
+          <text id="lbl-m-read" class="edge-label" x="748" y="188" text-anchor="middle">lee</text>
+
+          <!-- NODES -->
+          <g class="node" id="m-frontend">
+            <rect x="24" y="92" width="150" height="60" rx="6"></rect>
+            <text class="n-title" x="99" y="118" text-anchor="middle">Frontend</text>
+            <text class="n-sub" x="99" y="138" text-anchor="middle">:3000</text>
+          </g>
+          <g class="node" id="m-api">
+            <rect x="270" y="90" width="162" height="68" rx="6"></rect>
+            <text class="n-title" x="351" y="116" text-anchor="middle">Backend · API</text>
+            <text class="n-sub" x="351" y="136" text-anchor="middle">FastAPI · solo CRUD</text>
+          </g>
+          <g class="node" id="m-mercado">
+            <rect x="516" y="18" width="216" height="58" rx="6"></rect>
+            <text class="n-title" x="624" y="42" text-anchor="middle">scripts/mercado.py</text>
+            <text class="n-sub" x="624" y="62" text-anchor="middle">descarga paralela</text>
+          </g>
+          <g class="node" id="m-yf">
+            <rect x="790" y="18" width="186" height="58" rx="6"></rect>
+            <text class="n-title" x="883" y="42" text-anchor="middle">yfinance</text>
+            <text class="n-sub" x="883" y="62" text-anchor="middle">red · única fuente</text>
+          </g>
+          <g class="node" id="m-historico">
+            <rect x="516" y="174" width="216" height="58" rx="6"></rect>
+            <text class="n-title" x="624" y="198" text-anchor="middle">scripts/historico.py</text>
+            <text class="n-sub" x="624" y="218" text-anchor="middle">OHLC + indicadores</text>
+          </g>
+          <g class="node" id="m-db">
+            <rect x="790" y="90" width="186" height="68" rx="6"></rect>
+            <text class="n-title" x="883" y="114" text-anchor="middle">SQLite</text>
+            <text class="n-sub" x="883" y="134" text-anchor="middle">precios · activos</text>
+            <text class="n-sub" x="883" y="150" text-anchor="middle">mercado_cedears</text>
+          </g>
+        </svg>
+        <div class="m-caption" id="m-caption"></div>
+      </div>
     </div>
 
-    <!-- SLIDE 3: FLUJO SUPERPOWERS -->
+    <!-- SLIDE 3: DEMO -->
     <div class="slide" id="slide-3">
+      <div class="demo-hero">
+        <div class="demo-word">DEM<span>O</span></div>
+        <div class="demo-sub">Dashboard en vivo — <b>start.bat</b> → <b>localhost:3000</b></div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: FLUJO SUPERPOWERS -->
+    <div class="slide" id="slide-4">
       <div class="slide-header">
         <div class="slide-tag">Proceso de desarrollo · Superpowers</div>
         <h2 class="slide-title">De la idea al merge: un pipeline con artefactos versionados</h2>
@@ -548,8 +620,8 @@
       </div>
     </div>
 
-    <!-- SLIDE 4: CONFIGURACIONES CLAUDE CODE -->
-    <div class="slide" id="slide-4">
+    <!-- SLIDE 5: CONFIGURACIONES CLAUDE CODE -->
+    <div class="slide" id="slide-5">
       <div class="slide-header">
         <div class="slide-tag">Configuraciones de Claude Code</div>
         <h2 class="slide-title">Qué gobierna al agente, y en qué nivel</h2>
@@ -587,7 +659,7 @@
       <div class="grid-2" style="align-items:stretch;">
         <div class="card" style="border-top-color: var(--intel-deep-blue);">
           <div class="card-title">El límite determinístico vive fuera del prompt <span class="badge badge-dark">settings.json</span></div>
-          <pre class="file-snip" style="background:#0c0c0c; color:#e5e7eb; font-size:0.72rem;"><span style="color:#60a5fa;">"allow"</span>: [ <span style="color:#34d399;">"Bash(uv run pytest *)"</span>,
+          <pre class="file-snip" style="background:#0c0c0c; color:#e5e7eb; font-size:0.72rem; line-height:1.45; padding:0.6rem 0.75rem; margin:0; white-space:pre; overflow:hidden; border-radius:4px;"><span style="color:#60a5fa;">"allow"</span>: [ <span style="color:#34d399;">"Bash(uv run pytest *)"</span>,
            <span style="color:#34d399;">"Bash(uvicorn backend.main:app *)"</span> ],
 <span style="color:#60a5fa;">"deny"</span>:  [ <span style="color:#f87171;">"Bash(rm -rf *)"</span>,
            <span style="color:#f87171;">"Bash(git push --force*)"</span> ],
@@ -603,116 +675,12 @@
       </div>
     </div>
 
-    <!-- SLIDE 5: RECURSOS TECNICOS -->
-    <div class="slide" id="slide-5">
-      <div class="slide-header">
-        <div class="slide-tag">Recursos técnicos del repositorio</div>
-        <h2 class="slide-title">Los archivos que definen el proyecto</h2>
-      </div>
-      <div class="file-grid">
-        <div class="file-card">
-          <div class="file-head"><span class="file-name">CLAUDE.md</span><span class="file-role">contexto + arquitectura</span></div>
-<pre class="file-snip"><span class="cm"># Reglas de arquitectura</span>
-- El backend es solo CRUD. Nada de
-  yfinance ni pandas en backend/;
-  todo lo que descarga precios o
-  calcula indicadores vive en scripts/.
-- openapi.yaml es la fuente de verdad.</pre>
-        </div>
-        <div class="file-card">
-          <div class="file-head"><span class="file-name">.claude/rules/backend.md</span><span class="file-role">regla por glob</span></div>
-<pre class="file-snip"><span class="fm">---</span>
-<span class="fm">paths: ["backend/**/*.py"]</span>
-<span class="fm">---</span>
-- El backend no toca el dominio
-  externo: no importa yfinance ni
-  pandas. El backend es solo CRUD.</pre>
-        </div>
-        <div class="file-card">
-          <div class="file-head"><span class="file-name">.claude/rules/frontend.md</span><span class="file-role">regla por glob</span></div>
-<pre class="file-snip"><span class="fm">---</span>
-<span class="fm">paths: ["frontend/**/*.{html,js,css}"]</span>
-<span class="fm">---</span>
-- Vanilla single-file: todo en
-  frontend/index.html. Sin frameworks,
-  sin build, sin node_modules.</pre>
-        </div>
-        <div class="file-card">
-          <div class="file-head"><span class="file-name">.claude/settings.json</span><span class="file-role">permisos del harness</span></div>
-<pre class="file-snip"><span class="kw">"allow"</span>: ["Bash(uv run pytest *)", …],
-<span class="kw">"deny"</span>:  ["Bash(rm -rf *)",
-          "Bash(git push --force*)"],
-<span class="kw">"env"</span>:   {"CORS_ORIGINS":
-            "http://localhost:3000",
-          "PYTHONPATH": "."}</pre>
-        </div>
-        <div class="file-card">
-          <div class="file-head"><span class="file-name">skills/tecnico/SKILL.md</span><span class="file-role">slash command ReAct</span></div>
-<pre class="file-snip"><span class="fm">---</span>
-<span class="fm">name: tecnico</span>
-<span class="fm">description: análisis técnico</span>
-<span class="fm">  (RSI/MACD/SMA, score 0-100)</span>
-<span class="fm">---</span>
-### Think → Act → Observe</pre>
-        </div>
-        <div class="file-card">
-          <div class="file-head"><span class="file-name">docs/superpowers/specs/…-design.md</span><span class="file-role">spec del flujo</span></div>
-<pre class="file-snip"><span class="cm"># Spec — Score técnico on-demand,</span>
-<span class="cm"># cartera por checkbox, precios</span>
-<span class="cm"># como fuente única</span>
-score = 0.40·RSI_s
-      + 0.30·Tendencia_s
-      + 0.30·MACD_s</pre>
-        </div>
-      </div>
-      <div class="card" style="border-top-color: var(--intel-deep-blue); padding:0.7rem 1.1rem;">
-        <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
-          <span class="badge badge-dark">openapi.yaml</span>
-          <span style="font-size:0.86rem; color:var(--text-muted);"><strong style="color:var(--intel-deep-blue);">Contrato = fuente de verdad.</strong> Si cambia un endpoint (path, schema, status code) se edita el YAML <em>antes</em> que el código. Swagger se autogenera en <code style="font-family:var(--font-mono);">/docs</code> para verificar que la implementación matchea el contrato.</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- SLIDE 6: DEMO -->
+    <!-- SLIDE 6: CIERRE -->
     <div class="slide" id="slide-6">
-      <div class="demo-hero">
-        <div class="demo-word">DEM<span>O</span></div>
-        <div class="demo-sub">Dashboard en vivo — <b>start.bat</b> → <b>localhost:3000</b></div>
-      </div>
-    </div>
-
-    <!-- SLIDE 7: CIERRE -->
-    <div class="slide" id="slide-7">
-      <div class="slide-header">
-        <div class="slide-tag">Entregables cumplidos</div>
-        <h2 class="slide-title">Cierre</h2>
-      </div>
-      <div class="grid-2" style="align-items:start; gap:2rem;">
-        <ul class="checklist">
-          <li><strong>API REST</strong> FastAPI + SQLModel, contrato <code>openapi.yaml</code></li>
-          <li><strong>Persistencia</strong> SQLite con FK y borrado en cascada</li>
-          <li><strong>Frontend</strong> vanilla single-file servido en :3000</li>
-          <li><strong>Backend solo CRUD</strong>: cálculo aislado en <code>scripts/</code></li>
-          <li><strong>CLAUDE.md</strong> + <code>rules/</code> por glob + <code>settings.json</code></li>
-          <li><strong>Skill propia</strong> <code>/tecnico</code> (ciclo ReAct)</li>
-          <li><strong>Análisis técnico real</strong> RSI/MACD/SMA → score 0-100</li>
-          <li><strong>Tests</strong> pytest (API, indicadores, mercado, histórico)</li>
-          <li><strong>Flujo Superpowers</strong> specs + plans versionados</li>
-          <li><strong>GitHub Flow</strong>: ramas <code>feature/…</code> → <code>main</code> por PR</li>
-        </ul>
-        <div style="display:flex; flex-direction:column; gap:1.25rem;">
-          <div class="card" style="border-top-color: var(--intel-cyan);">
-            <div class="card-title">Repositorio</div>
-            <p style="margin-bottom:0.8rem;">Código, contrato, specs/plans y bitácora de prompts, todo versionado en GitHub.</p>
-            <a class="repo-link" href="https://github.com/Neo820712/Erlin-Rey-TP3" target="_blank" rel="noopener">github.com/Neo820712/Erlin-Rey-TP3</a>
-          </div>
-          <div class="hero-slide" style="padding:1.75rem 2rem; min-height:0;">
-            <div>
-              <h2 style="font-size:1.9rem; font-weight:700; color:#fff;">Gracias</h2>
-              <p style="color:var(--intel-cyan); font-family:var(--font-mono); font-size:0.95rem; margin-top:0.35rem;">Preguntas</p>
-            </div>
-          </div>
-        </div>
+      <div class="demo-hero" style="gap:1.2rem;">
+        <div class="demo-word" style="font-size:5rem; letter-spacing:0.08em;">GRACIAS</div>
+        <div class="demo-sub"><b>Preguntas</b></div>
+        <a class="repo-link" href="https://github.com/Neo820712/Erlin-Rey-TP3" target="_blank" rel="noopener" style="margin-top:0.5rem; z-index:1;">github.com/Neo820712/Erlin-Rey-TP3</a>
       </div>
     </div>
 
@@ -724,7 +692,7 @@ score = 0.40·RSI_s
       <span style="margin-left:0.4rem;">· en Arquitectura recorren los pasos de la simulación</span>
     </div>
     <div class="progress-container">
-      <div class="slide-counter" id="slide-indicator">1 / 7</div>
+      <div class="slide-counter" id="slide-indicator">1 / 6</div>
       <div class="progress-bar-wrapper"><div class="progress-bar" id="progress-bar"></div></div>
     </div>
     <div class="nav-controls">
@@ -791,14 +759,22 @@ score = 0.40·RSI_s
           edges: []
         },
         {
-          title: '5 · Persiste el Analisis',
-          desc: 'El backend persiste el Analisis en SQLite con la FK activo_id. Único responsable de escribir: CRUD.',
+          title: '5 · scripts/ devuelve el score al backend',
+          desc: 'El subproceso termina y devuelve el resultado calculado (score + señal + confianza) al backend por stdout. Acá vuelve el dato.',
+          chip: 'stdout JSON → { score, señal, confianza }',
+          nodes: ['n-scripts', 'n-api'],
+          edges: ['e-scripts-api'],
+          labels: ['lbl-return']
+        },
+        {
+          title: '6 · Persiste el Analisis',
+          desc: 'El backend persiste el Analisis en SQLite con la FK activo_id. Es dueño de las entidades de negocio (activos / analisis); precios lo escribe scripts/.',
           chip: 'INSERT analisis (activo_id FK, score)',
           nodes: ['n-api', 'n-db'],
           edges: ['e-api-db']
         },
         {
-          title: '6 · 201 → el frontend pinta el badge',
+          title: '7 · 201 → el frontend pinta el badge',
           desc: 'La API responde 201 con el análisis. El frontend muta state y render() pinta el badge en la card.',
           chip: '201 Analisis → state → render() → "Técnico: compra · 72"',
           nodes: ['n-api', 'n-frontend'],
@@ -807,8 +783,8 @@ score = 0.40·RSI_s
       ];
 
       const ALL_NODES = ['n-frontend', 'n-skill', 'n-api', 'n-scripts', 'n-db'];
-      const ALL_EDGES = ['e-c1', 'e-c2', 'e-api-scripts', 'e-scripts-db', 'e-api-db', 'e-api-client'];
-      const ALL_LABELS = ['lbl-read'];
+      const ALL_EDGES = ['e-c1', 'e-c2', 'e-api-scripts', 'e-scripts-db', 'e-scripts-api', 'e-api-db', 'e-api-client'];
+      const ALL_LABELS = ['lbl-read', 'lbl-return'];
 
       let archStep = 0;
       const stepTitle = document.getElementById('step-title');
@@ -847,6 +823,57 @@ score = 0.40·RSI_s
 
       archPrev.addEventListener('click', () => setArchStep(archStep - 1));
       archNext.addEventListener('click', () => setArchStep(archStep + 1));
+
+      /* ---------- Esquema 2: toggle de circuitos (datos / cartera / gráficos) ---------- */
+      const circuits = [
+        {
+          label: 'Descargar precios',
+          nodes: ['m-frontend', 'm-api', 'm-mercado', 'm-yf', 'm-db'],
+          edges: ['e-m-fe-api', 'e-m-api-mercado', 'e-m-mercado-yf', 'e-m-mercado-db'],
+          labels: ['lbl-m-yf', 'lbl-m-write'],
+          caption: 'yfinance solo corre acá. <strong>mercado.py</strong> descarga en paralelo y <span class="w">escribe</span> la tabla precios — la única escritura de precios.'
+        },
+        {
+          label: 'Cartera',
+          nodes: ['m-frontend', 'm-api', 'm-db'],
+          edges: ['e-m-fe-api', 'e-m-api-db'],
+          labels: ['lbl-m-cartera'],
+          caption: 'Alta y baja de activos: <strong>CRUD puro</strong>. El backend lee y escribe la tabla activos a través del contrato.'
+        },
+        {
+          label: 'Gráficos',
+          nodes: ['m-frontend', 'm-api', 'm-historico', 'm-db'],
+          edges: ['e-m-fe-api', 'e-m-api-historico', 'e-m-historico-db', 'e-m-api-fe'],
+          labels: ['lbl-m-read', 'lbl-m-json'],
+          caption: '<strong>historico.py</strong> lee precios y arma OHLC + indicadores; la API devuelve el JSON que el frontend dibuja.'
+        }
+      ];
+      const ALL_M_NODES = ['m-frontend', 'm-api', 'm-mercado', 'm-yf', 'm-historico', 'm-db'];
+      const ALL_M_EDGES = ['e-m-fe-api', 'e-m-api-fe', 'e-m-api-mercado', 'e-m-mercado-yf', 'e-m-mercado-db', 'e-m-api-db', 'e-m-api-historico', 'e-m-historico-db'];
+      const ALL_M_LABELS = ['lbl-m-json', 'lbl-m-yf', 'lbl-m-write', 'lbl-m-cartera', 'lbl-m-read'];
+
+      const chipsWrap = document.getElementById('circuit-chips');
+      const mCaption = document.getElementById('m-caption');
+      let mCircuit = 0;
+
+      function setCircuit(i) {
+        mCircuit = Math.max(0, Math.min(circuits.length - 1, i));
+        const c = circuits[mCircuit];
+        ALL_M_NODES.forEach(id => document.getElementById(id).classList.toggle('on', c.nodes.includes(id)));
+        ALL_M_EDGES.forEach(id => document.getElementById(id).classList.toggle('on', c.edges.includes(id)));
+        ALL_M_LABELS.forEach(id => document.getElementById(id).classList.toggle('on', c.labels.includes(id)));
+        mCaption.innerHTML = c.caption;
+        Array.from(chipsWrap.children).forEach((b, idx) => b.classList.toggle('on', idx === mCircuit));
+      }
+
+      circuits.forEach((c, i) => {
+        const b = document.createElement('button');
+        b.className = 'circuit-chip';
+        b.textContent = c.label;
+        b.addEventListener('click', () => setCircuit(i));
+        chipsWrap.appendChild(b);
+      });
+      setCircuit(0);
 
       /* ---------- Teclado: en Arquitectura recorre pasos, luego cambia slide ---------- */
       function onRight() {
