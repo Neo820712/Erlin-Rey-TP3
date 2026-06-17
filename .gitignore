@@ -16,6 +16,9 @@ data/*.db
 data/*.sqlite
 data/*.sqlite3
 
+# Cache local de precios OHLC (lo genera la ingesta, no se versiona)
+data/prices_cache/
+
 # Config local de Claude Code (personal, no se comparte)
 .claude/settings.local.json
 
