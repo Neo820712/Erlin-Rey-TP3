@@ -3,6 +3,7 @@ name: tecnico
 description: Genera y persiste un análisis técnico (RSI/MACD/SMA, score 0-100) para un activo de la cartera vía la API. Usar cuando se invoca /tecnico TICKER.
 ---
 
+
 # /tecnico
 
 Genera un análisis técnico real para un activo monitoreado y lo persiste en la base, llamando a

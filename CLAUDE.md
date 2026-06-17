@@ -95,10 +95,6 @@ Invariantes cross-cutting. El detalle de backend vive en `rules/backend.md`, el 
 - **Frontend:** desde `frontend/`, `python -m http.server 3000`. Debe servirse en :3000 (único
   origen con CORS); abierto con `file://` las llamadas a la API fallan.
 
-### Datos
-
-- **Poblar la base:** `uv run python scripts/seed.py` (idempotente; úsalo si necesitas datos de prueba).
-- **Actualizar mercado:** `uv run python -m scripts.mercado` (refresca CEDEARs y la tabla `precios`).
 
 ### Validación
 
@@ -108,27 +104,9 @@ Invariantes cross-cutting. El detalle de backend vive en `rules/backend.md`, el 
   `data/activos.db` queda obsoleto. Debes advertirlo, eliminar el `.db` y recrearlo con `seed.py`.
 
 
-## Skill `/tecnico`
-
-`/tecnico TICKER`. Implementa el ciclo ReAct (think -> act -> observe). El detalle de comportamiento
-vive en `.claude/skills/tecnico/SKILL.md`; acá van los principios:
-
-- **Delegación estricta (act):** el cuerpo de la skill orquesta, pero el cómputo se delega
-  EXCLUSIVAMENTE a `scripts/score_tecnico.py` (compartido con `POST /activos/{id}/analisis/tecnico`).
-  Prohibido usar pandas/yfinance o escribir scripts ad-hoc durante la ejecución.
-- **Salida limpia (think):** el razonamiento es interno; la salida final contiene solo el resultado
-  duro (score 0-100, señal derivada, confianza), sin meta-comentarios sobre el proceso.
-- **Límite de reintentos (observe):** si el script falla, hasta 2 intentos de corregir los parámetros
-  enviados; si vuelve a fallar, abortar el ciclo y devolver el error crudo, conciso y con una pregunta
-  concreta al usuario.
-
-
 ## Flujo de trabajo (GitHub Flow)
 
 - Se trabaja en ramas `feature/...`. **Nunca se commitea directo sobre `main`.**
 - El trabajo terminado se integra a `main` **vía Pull Request**, no por merge local directo.
 
-## Recordatorios
 
-- **No usar `@import` del `openapi.yaml` en este `CLAUDE.md`:** insertaría el YAML completo en el
-  contexto en cada sesión (~3000 tokens innecesarios). Que Claude Code lo lea cuando lo necesite.
