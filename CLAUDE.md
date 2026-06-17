@@ -99,8 +99,9 @@ data/
 - **El backend no descarga datos de mercado:** `POST /mercado/actualizar` y
   `GET /mercado/{ticker}/historico` lanzan `scripts/mercado.py` e `scripts/historico.py` como
   subprocesos (stdout JSON). La tabla `mercado_cedears` guarda el snapshot sin senal/rsi
-  (esos campos son `None`). `POST /activos/{id}/analisis/tecnico` lanza
-  `scripts.score_tecnico` como subproceso y persiste el resultado (el backend no computa).
+  (esos campos son `None`). `POST /activos/{id}/analisis/tecnico` (en cartera, persiste) y
+  `GET /mercado/{ticker}/tecnico` (fuera de cartera, sin persistir) lanzan
+  `scripts.score_tecnico` como subproceso; el backend no computa, solo el primero guarda.
 - **Foreign key con borrado en cascada.** SQLite no aplica FK por defecto: el engine emite
   `PRAGMA foreign_keys=ON` por conexión. Borrar un activo borra sus análisis.
 

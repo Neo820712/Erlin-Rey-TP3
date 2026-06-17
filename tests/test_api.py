@@ -26,6 +26,15 @@ def test_listar_activos_devuelve_los_creados(client):
     assert tickers == {"AAPL", "MSFT"}
 
 
+def test_crear_activo_ticker_duplicado_es_idempotente(client):
+    primero = client.post("/activos", json=_activo_payload("AAPL"))
+    assert primero.status_code == 201
+    segundo = client.post("/activos", json=_activo_payload("AAPL"))
+    assert segundo.status_code == 200
+    assert segundo.json()["id"] == primero.json()["id"]
+    assert len(client.get("/activos").json()) == 1
+
+
 def test_crear_activo_body_invalido_devuelve_400(client):
     resp = client.post("/activos", json={"ticker": "AAPL"})  # faltan campos
     assert resp.status_code == 400
