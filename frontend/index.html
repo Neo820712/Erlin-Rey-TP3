@@ -116,17 +116,6 @@
     .estado.loading { background: var(--bg-sin-senal); color: var(--color-text-muted); }
     .vacio { color: var(--color-text-muted); }
 
-    /* Autocompletado */
-    .buscador { position: relative; }
-    .dropdown {
-      position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
-      background: var(--color-surface); border: 1px solid var(--color-border);
-      border-radius: var(--radius); max-height: 240px; overflow-y: auto; margin-top: 2px;
-    }
-    .dropdown .opcion { padding: var(--space-sm); cursor: pointer; font-size: 0.85rem; }
-    .dropdown .opcion:hover, .dropdown .opcion.activa { background: var(--color-bg); }
-    .dropdown .opcion .tk { font-weight: 700; color: var(--color-primary-dark); margin-right: 6px; }
-
     /* Tabla de mercado */
     .toolbar { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-sm); }
     .toolbar .actualizado { color: var(--color-text-muted); font-size: 0.8rem; margin-left: auto; }
@@ -179,7 +168,7 @@
     </section>
 
     <section id="lista-activos">
-      <h2>Activos monitoreados</h2>
+      <h2>Cartera de inversión</h2>
       <div class="grid" id="grid"></div>
     </section>
 
@@ -216,6 +205,7 @@
       detalle: null,              // payload de /historico del ticker abierto
       detalleTicker: null,
       detallePeriodo: '3m',
+      detalleAnalisisTecnico: null,
       loading: false,
       error: null,
     };
@@ -321,7 +311,7 @@
       if (enDetalle) { renderDetalle(); return; }
 
       document.getElementById('contador').textContent =
-        state.activos.length ? `${state.activos.length} activos` : '';
+        state.activos.length ? `${state.activos.length} en cartera` : '';
 
       renderMercado();
       const btnAct = document.getElementById('m-actualizar');
@@ -332,7 +322,7 @@
 
       const grid = document.getElementById('grid');
       if (!state.activos.length && !state.loading) {
-        grid.innerHTML = `<p class="vacio">No hay activos en cartera. Tildá alguno en la tabla de mercado.</p>`;
+        grid.innerHTML = `<p class="vacio">Tu cartera está vacía. Tildá un ticker en la tabla de mercado.</p>`;
       } else {
         grid.innerHTML = state.activos.map(cardHTML).join('');
         grid.querySelectorAll('.card').forEach((el) => {
@@ -349,6 +339,7 @@
 
     function cardHTML(activo) {
       const sr = activo.senales_recientes || {};
+      const scoreTxt = sr.score != null ? ` · ${Math.round(sr.score)}` : '';
       return `
         <div class="card" data-id="${activo.id}" data-ticker="${esc(activo.ticker)}">
           <div class="card-top">
@@ -359,7 +350,7 @@
           </div>
           <div class="meta">${esc(activo.tipo)} · ${esc(activo.mercado)}</div>
           <div class="badges">
-            ${badgeHTML('Técnico', sr.tecnico)}
+            <span class="badge ${claseSenal(sr.tecnico)}"><span class="etq">Tecnico</span>${esc(sr.tecnico ? sr.tecnico + scoreTxt : 'sin datos')}</span>
             ${badgeHTML('Sentim.', sr.sentimiento)}
           </div>
         </div>`;
@@ -451,14 +442,18 @@
         let marca = '';
         if (state.mercadoSort.col === col.key) marca = state.mercadoSort.dir === 'asc' ? ' ↑' : ' ↓';
         th.textContent = col.label + marca;
-        th.addEventListener('click', () => {
-          if (state.mercadoSort.col === col.key) {
-            state.mercadoSort.dir = state.mercadoSort.dir === 'asc' ? 'desc' : 'asc';
-          } else {
-            state.mercadoSort = { col: col.key, dir: 'asc' };
-          }
-          render();
-        });
+        if (col.key !== 'cartera') {
+          th.addEventListener('click', () => {
+            if (state.mercadoSort.col === col.key) {
+              state.mercadoSort.dir = state.mercadoSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+              state.mercadoSort = { col: col.key, dir: 'asc' };
+            }
+            render();
+          });
+        } else {
+          th.style.cursor = 'default';
+        }
         trh.appendChild(th);
       }
       thead.appendChild(trh);
@@ -518,9 +513,29 @@
           api(`/mercado/${t}/fundamentales`).catch(() => null),
         ]);
         state.detalle = { ...hist, fundamentales: fund };
+        const activo = state.activos.find((a) => a.ticker === ticker);
+        state.detalleAnalisisTecnico = null;
+        if (activo) {
+          const lista = await api(`/activos/${activo.id}/analisis`).catch(() => []);
+          state.detalleAnalisisTecnico = lista.find((a) => a.tipo === 'tecnico') || null;
+        }
       } catch (e) {
         state.error = `No se pudo cargar el histórico de ${ticker}: ${e.message}`;
       } finally {
+        state.loading = false; render();
+      }
+    }
+
+    async function analizarTecnico(ticker) {
+      const activo = state.activos.find((a) => a.ticker === ticker);
+      if (!activo) return;
+      state.loading = true; state.error = null; render();
+      try {
+        await api(`/activos/${activo.id}/analisis/tecnico`, { method: 'POST' });
+        await cargarActivos();
+        await abrirDetalle(ticker, state.detallePeriodo);
+      } catch (e) {
+        state.error = `No se pudo analizar ${ticker}: ${e.message}`;
         state.loading = false; render();
       }
     }
@@ -567,22 +582,19 @@
     }
 
     function renderPaneles() {
-      const ind = (state.detalle && state.detalle.indicadores) || {};
       const m = (state.detalle && state.detalle.fundamentales) || {};
 
-      // Tarjeta 1: Datos de la acción
+      // Tarjeta 1: Datos de la accion (sin senal/confianza)
       const acc = document.getElementById('panel-accion');
       acc.innerHTML = '';
       acc.appendChild(filaMetrica('Precio (USD)', fmtNum(m.precio_usd)));
-      acc.appendChild(filaMetrica('Var % (día)', m.var_pct != null ? `${fmtNum(m.var_pct)}%` : '—'));
+      acc.appendChild(filaMetrica('Var % (dia)', m.var_pct != null ? `${fmtNum(m.var_pct)}%` : '—'));
       acc.appendChild(filaMetrica('Volumen', fmtAbrev(m.volumen)));
       acc.appendChild(filaMetrica('Market Cap', fmtAbrev(m.market_cap)));
       acc.appendChild(filaMetrica('52w High', fmtNum(m.w52_high)));
       acc.appendChild(filaMetrica('52w Low', fmtNum(m.w52_low)));
-      acc.appendChild(filaSenal('Señal del sistema', ind.senal));
-      acc.appendChild(filaMetrica('Confianza', ind.confianza != null ? `${Math.round(ind.confianza * 100)}%` : '—'));
 
-      // Tarjeta 2: Análisis fundamental
+      // Tarjeta 2: Analisis fundamental
       const fun = document.getElementById('panel-fundamental');
       fun.innerHTML = '';
       fun.appendChild(filaMetrica('P/E', fmtNum(m.pe)));
@@ -593,20 +605,33 @@
       fun.appendChild(filaMetrica('Price-to-Book', fmtNum(m.price_to_book)));
       fun.appendChild(filaMetrica('Dividend Yield', pctDirecto(m.dividend_yield)));
 
-      // Tarjeta 3: Indicadores técnicos
+      // Tarjeta 3: Tecnico (on-demand, desde el ultimo Analisis)
       const tec = document.getElementById('panel-tecnico');
       tec.innerHTML = '';
-      const rsiFila = filaMetrica('RSI (14)', ind.rsi != null ? fmtNum(ind.rsi, 1) : '—');
-      if (ind.rsi != null) {
-        if (ind.rsi < 30) rsiFila.lastChild.className = 'rsi-bajo';
-        else if (ind.rsi > 70) rsiFila.lastChild.className = 'rsi-alto';
+      const enCartera = !!state.activos.find((a) => a.ticker === state.detalleTicker);
+      const an = state.detalleAnalisisTecnico;
+      if (!enCartera) {
+        const p = document.createElement('p'); p.className = 'vacio';
+        p.textContent = 'Agregalo a la cartera (checkbox) para analizar.';
+        tec.appendChild(p);
+      } else {
+        if (an) {
+          tec.appendChild(filaSenal('Senal', an.senal));
+          tec.appendChild(filaMetrica('Score', an.score != null ? `${Math.round(an.score)}/100` : '—'));
+          tec.appendChild(filaMetrica('Confianza', an.confianza != null ? `${Math.round(an.confianza * 100)}%` : '—'));
+          const res = document.createElement('div'); res.className = 'resumen'; res.textContent = an.resumen;
+          tec.appendChild(res);
+        } else {
+          const p = document.createElement('p'); p.className = 'vacio';
+          p.textContent = 'Sin analisis tecnico todavia.';
+          tec.appendChild(p);
+        }
+        const btn = document.createElement('button');
+        btn.textContent = state.loading ? 'Analizando…' : 'Analizar';
+        btn.disabled = state.loading;
+        btn.addEventListener('click', () => analizarTecnico(state.detalleTicker));
+        tec.appendChild(btn);
       }
-      tec.appendChild(rsiFila);
-      tec.appendChild(filaMetrica('MACD', ind.macd != null ? `${fmtNum(ind.macd)} vs ${fmtNum(ind.signal)}` : '—'));
-      tec.appendChild(filaMetrica('SMA 20', ind.sma20 != null ? fmtNum(ind.sma20) : '—'));
-      tec.appendChild(filaMetrica('SMA 50', ind.sma50 != null ? fmtNum(ind.sma50) : '—'));
-      tec.appendChild(filaSenal('Señal', ind.senal));
-      tec.appendChild(filaMetrica('Confianza', ind.confianza != null ? `${Math.round(ind.confianza * 100)}%` : '—'));
     }
 
     function renderPeriodos() {
@@ -629,7 +654,7 @@
       cont.appendChild(h);
       if (!activo) {
         const p = document.createElement('p'); p.className = 'vacio';
-        p.textContent = 'Este ticker no está en la cartera. Tildalo en la tabla de mercado para guardar análisis.';
+        p.textContent = 'Este ticker no está en tu cartera. Tildalo en la tabla para guardar análisis.';
         cont.appendChild(p);
         return;
       }
