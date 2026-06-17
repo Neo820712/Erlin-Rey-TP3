@@ -54,7 +54,7 @@ def test_detalle_activo_sin_analisis(client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["id"] == aid
-    assert body["senales_recientes"] == {"tecnico": None, "sentimiento": None}
+    assert body["senales_recientes"] == {"tecnico": None, "sentimiento": None, "score": None}
 
 
 def test_detalle_activo_toma_la_senal_mas_reciente_por_tipo(client):
