@@ -168,38 +168,6 @@
   <main>
     <section id="estado-global"></section>
 
-    <section id="alta-activo">
-      <h2>Agregar activo</h2>
-      <form id="form-activo">
-        <div class="campo buscador">
-          <label for="f-busqueda">Buscar (ticker o empresa)</label>
-          <input id="f-busqueda" autocomplete="off" placeholder="apple, AAPL…">
-          <div id="dropdown"></div>
-          <input id="f-ticker" name="ticker" type="hidden" required>
-        </div>
-        <div class="campo">
-          <label for="f-nombre">Nombre</label>
-          <input id="f-nombre" name="nombre" required maxlength="80" autocomplete="off">
-        </div>
-        <div class="campo">
-          <label for="f-tipo">Tipo</label>
-          <select id="f-tipo" name="tipo">
-            <option value="accion">accion</option>
-            <option value="ON">ON</option>
-          </select>
-        </div>
-        <div class="campo">
-          <label for="f-mercado">Mercado</label>
-          <select id="f-mercado" name="mercado">
-            <option value="BYMA">BYMA</option>
-            <option value="NYSE">NYSE</option>
-            <option value="NASDAQ">NASDAQ</option>
-          </select>
-        </div>
-        <button type="submit" id="btn-alta">Agregar</button>
-      </form>
-    </section>
-
     <section id="mercado">
       <h2>Mercado (CEDEARs)</h2>
       <div class="toolbar">
@@ -248,7 +216,6 @@
       detalle: null,              // payload de /historico del ticker abierto
       detalleTicker: null,
       detallePeriodo: '3m',
-      seleccion: null,            // entrada de cedears elegida en el autocompletado
       loading: false,
       error: null,
     };
@@ -334,68 +301,11 @@
       }
     }
 
-    async function altaActivo(datos) {
-      state.loading = true; state.error = null; render();
-      try {
-        await api('/activos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(datos),
-        });
-        document.getElementById('form-activo').reset();
-        document.getElementById('f-busqueda').value = '';
-        state.seleccion = null;
-        await cargarActivos();
-      } catch (e) {
-        state.error = `No se pudo agregar el activo: ${e.message}`;
-        state.loading = false; render();
-      }
-    }
-
-    // --- autocompletado ---
-    function filtrarCedears(texto) {
-      const q = texto.trim().toLowerCase();
-      if (!q) return [];
-      return state.cedears.filter((c) =>
-        c.ticker_byma.toLowerCase().includes(q) || c.nombre.toLowerCase().includes(q)
-      ).slice(0, 8);
-    }
-
-    function renderDropdown(texto) {
-      const cont = document.getElementById('dropdown');
-      cont.innerHTML = '';
-      const opciones = filtrarCedears(texto);
-      cont.className = opciones.length ? 'dropdown' : '';
-      for (const c of opciones) {
-        const div = document.createElement('div');
-        div.className = 'opcion';
-        const tk = document.createElement('span');
-        tk.className = 'tk';
-        tk.textContent = c.ticker_byma;            // textContent: a prueba de XSS
-        div.appendChild(tk);
-        div.appendChild(document.createTextNode(c.nombre));
-        div.addEventListener('click', () => seleccionarCedear(c));
-        cont.appendChild(div);
-      }
-    }
-
-    function seleccionarCedear(c) {
-      const f = document.getElementById('form-activo');
-      document.getElementById('f-busqueda').value = `${c.ticker_byma} — ${c.nombre}`;
-      f.ticker.value = c.ticker_byma;
-      f.nombre.value = c.nombre;
-      f.tipo.value = c.tipo;
-      f.mercado.value = c.mercado;
-      state.seleccion = c;
-      const d = document.getElementById('dropdown');
-      d.innerHTML = ''; d.className = '';
-    }
-
     // --- render (única función que toca el DOM) ---
     function render() {
       const enDetalle = state.view === 'detalle';
       document.getElementById('detalle').style.display = enDetalle ? '' : 'none';
-      ['alta-activo', 'mercado', 'lista-activos'].forEach((id) => {
+      ['mercado', 'lista-activos'].forEach((id) => {
         document.getElementById(id).style.display = enDetalle ? 'none' : '';
       });
 
@@ -412,7 +322,6 @@
 
       document.getElementById('contador').textContent =
         state.activos.length ? `${state.activos.length} activos` : '';
-      document.getElementById('btn-alta').disabled = state.loading;
 
       renderMercado();
       const btnAct = document.getElementById('m-actualizar');
@@ -423,7 +332,7 @@
 
       const grid = document.getElementById('grid');
       if (!state.activos.length && !state.loading) {
-        grid.innerHTML = `<p class="vacio">No hay activos. Agregá uno con el formulario.</p>`;
+        grid.innerHTML = `<p class="vacio">No hay activos en cartera. Tildá alguno en la tabla de mercado.</p>`;
       } else {
         grid.innerHTML = state.activos.map(cardHTML).join('');
         grid.querySelectorAll('.card').forEach((el) => {
@@ -463,10 +372,9 @@
       { key: 'precio_usd', label: 'Precio (USD)' },
       { key: 'var_pct', label: 'Var %' },
       { key: 'volumen', label: 'Volumen' },
-      { key: 'rsi', label: 'RSI(14)' },
-      { key: 'senal', label: 'Señal' },
       { key: 'pe', label: 'P/E' },
       { key: 'market_cap', label: 'Market Cap' },
+      { key: 'cartera', label: 'Cartera' },
     ];
 
     function filasMercadoVisibles() {
@@ -492,17 +400,41 @@
         const flecha = c.var_pct >= 0 ? '▲' : '▼';
         return { texto: `${flecha} ${fmtNum(c.var_pct)}%`, clase: c.var_pct >= 0 ? 'var-pos' : 'var-neg' };
       }
-      if (key === 'rsi') {
-        if (c.rsi == null) return { texto: '—', clase: '' };
-        const clase = c.rsi < 30 ? 'rsi-bajo' : c.rsi > 70 ? 'rsi-alto' : '';
-        return { texto: fmtNum(c.rsi, 1), clase };
-      }
-      if (key === 'senal') return { texto: c.senal || '—', clase: '', pill: true };
       if (key === 'precio_usd') return { texto: fmtNum(c.precio_usd), clase: '' };
       if (key === 'pe') return { texto: fmtNum(c.pe), clase: '' };
       if (key === 'volumen') return { texto: fmtAbrev(c.volumen), clase: '' };
       if (key === 'market_cap') return { texto: fmtAbrev(c.market_cap), clase: '' };
       return { texto: c[key] == null ? '—' : String(c[key]), clase: '' };
+    }
+
+    function activoDeTicker(tickerByma) {
+      return state.activos.find((a) => a.ticker === tickerByma) || null;
+    }
+
+    async function toggleCartera(cedear, agregar) {
+      state.loading = true; state.error = null; render();
+      try {
+        if (agregar) {
+          const cat = state.cedears.find((c) => c.ticker_byma === cedear.ticker_byma);
+          await api('/activos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ticker: cedear.ticker_byma,
+              nombre: cedear.nombre,
+              tipo: cat ? cat.tipo : 'accion',
+              mercado: cat ? cat.mercado : 'NASDAQ',
+            }),
+          });
+        } else {
+          const activo = activoDeTicker(cedear.ticker_byma);
+          if (activo) await api(`/activos/${activo.id}`, { method: 'DELETE' });
+        }
+        await cargarActivos();
+      } catch (e) {
+        state.error = `No se pudo actualizar la cartera: ${e.message}`;
+        state.loading = false; render();
+      }
     }
 
     function renderMercado() {
@@ -548,16 +480,19 @@
           tr.addEventListener('click', () => abrirDetalle(c.ticker_byma));
           for (const col of COLS_MERCADO) {
             const td = document.createElement('td');
-            const { texto, clase, pill } = celdaMercado(c, col.key);
-            if (pill && c.senal) {
-              const span = document.createElement('span');
-              span.className = `pill ${claseSenal(c.senal)}`;
-              span.textContent = c.senal;
-              td.appendChild(span);
-            } else {
-              td.textContent = texto;
-              if (clase) td.className = clase;
+            if (col.key === 'cartera') {
+              const chk = document.createElement('input');
+              chk.type = 'checkbox';
+              chk.checked = !!activoDeTicker(c.ticker_byma);
+              chk.addEventListener('click', (ev) => ev.stopPropagation());
+              chk.addEventListener('change', (ev) => toggleCartera(c, ev.target.checked));
+              td.appendChild(chk);
+              tr.appendChild(td);
+              continue;
             }
+            const { texto, clase } = celdaMercado(c, col.key);
+            td.textContent = texto;
+            if (clase) td.className = clase;
             tr.appendChild(td);
           }
           tbody.appendChild(tr);
@@ -694,7 +629,7 @@
       cont.appendChild(h);
       if (!activo) {
         const p = document.createElement('p'); p.className = 'vacio';
-        p.textContent = 'Este ticker no está en monitoreo. Agregalo desde el formulario para guardar análisis.';
+        p.textContent = 'Este ticker no está en la cartera. Tildalo en la tabla de mercado para guardar análisis.';
         cont.appendChild(p);
         return;
       }
@@ -770,27 +705,6 @@
     }
 
     // --- eventos ---
-    document.getElementById('form-activo').addEventListener('submit', (ev) => {
-      ev.preventDefault();
-      const f = ev.target;
-      altaActivo({
-        ticker: f.ticker.value.trim(),
-        nombre: f.nombre.value.trim(),
-        tipo: f.tipo.value,
-        mercado: f.mercado.value,
-      });
-    });
-
-    document.getElementById('f-busqueda').addEventListener('input', (ev) => {
-      renderDropdown(ev.target.value);
-    });
-    document.addEventListener('click', (ev) => {
-      if (!ev.target.closest('.buscador')) {
-        const d = document.getElementById('dropdown');
-        d.innerHTML = ''; d.className = '';
-      }
-    });
-
     document.getElementById('m-actualizar').addEventListener('click', actualizarMercado);
     document.getElementById('m-filtro').addEventListener('input', (ev) => {
       state.mercadoFiltro = ev.target.value; render();
