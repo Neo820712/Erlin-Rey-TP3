@@ -117,6 +117,32 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /activos/{id}/analisis/tecnico:
+    post:
+      summary: Computa el score tecnico desde precios y persiste el analisis
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '201':
+          description: Analisis tecnico creado (senal/confianza/resumen/score computados)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Analisis' }
+        '400':
+          description: No hay precios para el ticker (correr Actualizar primero)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: El activo no existe
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Fallo el computo del score
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /mercado/catalogo:
     get:
       summary: Catálogo de CEDEARs para el autocompletado (lee data/cedears.json)
@@ -219,6 +245,7 @@ components:
       properties:
         tecnico: { type: [string, 'null'], enum: [compra, venta, hold, null] }
         sentimiento: { type: [string, 'null'], enum: [compra, venta, hold, null] }
+        score: { type: [number, 'null'] }
     ActivoDetalle:
       allOf:
         - $ref: '#/components/schemas/Activo'
@@ -234,6 +261,7 @@ components:
         senal: { type: string, enum: [compra, venta, hold] }
         confianza: { type: number, minimum: 0, maximum: 1 }
         resumen: { type: string }
+        score: { type: [number, 'null'] }
     Analisis:
       allOf:
         - $ref: '#/components/schemas/AnalisisCreate'
