@@ -1,0 +1,397 @@
+openapi: 3.1.0
+info:
+  title: API de análisis de activos financieros
+  version: 1.0.0
+  description: >
+    API para la gestión y monitoreo de activos financieros (acciones y obligaciones negociables)
+    junto con el almacenamiento de análisis (técnico y de sentimiento) generados por agentes autónomos.
+servers:
+  - url: https://api.midominio.com/v1
+    description: Servidor de producción
+  - url: http://localhost:8080/v1
+    description: Servidor de desarrollo local
+tags:
+  - name: Activos
+    description: Gestión de los activos financieros monitoreados por el sistema.
+  - name: Análisis
+    description: Registro y consulta de análisis generados por los agentes de IA.
+paths:
+  /activos:
+    get:
+      summary: Listar todos los activos monitoreados
+      operationId: getActivos
+      tags:
+        - Activos
+      responses:
+        '200':
+          description: Lista de activos obtenida exitosamente.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activo'
+    post:
+      summary: Registrar un nuevo activo para monitorear
+      operationId: createActivo
+      tags:
+        - Activos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivoCreate'
+      responses:
+        '201':
+          description: Activo registrado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activo'
+        '400':
+          description: Payload inválido. Faltan campos requeridos o tienen un formato incorrecto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /activos/{id}:
+    get:
+      summary: Obtener detalle de un activo
+      description: >
+        Devuelve un activo con las señales más recientes de cada tipo de análisis
+        ya incluidas, ideal para renderizar de forma rápida en dashboards.
+      operationId: getActivoById
+      tags:
+        - Activos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único del activo.
+          schema:
+            type: integer
+          examples:
+            ejemplo:
+              value: 1
+      responses:
+        '200':
+          description: Detalle del activo y sus señales recientes obtenido exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivoDetalle'
+        '404':
+          description: El activo solicitado no fue encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Eliminar un activo y todo su historial de análisis
+      operationId: deleteActivo
+      tags:
+        - Activos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único del activo a eliminar.
+          schema:
+            type: integer
+          examples:
+            ejemplo:
+              value: 1
+      responses:
+        '204':
+          description: Activo eliminado exitosamente. (Sin contenido en la respuesta)
+        '404':
+          description: El activo solicitado no fue encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /activos/{id}/analisis:
+    get:
+      summary: Listar todos los análisis de un activo específico
+      operationId: getAnalisisByActivoId
+      tags:
+        - Análisis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único del activo.
+          schema:
+            type: integer
+          examples:
+            ejemplo:
+              value: 1
+      responses:
+        '200':
+          description: Lista de análisis del activo obtenida exitosamente.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Analisis'
+        '404':
+          description: El activo solicitado no fue encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Registrar un nuevo análisis para un activo
+      operationId: createAnalisisForActivo
+      tags:
+        - Análisis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único del activo al que pertenece el análisis.
+          schema:
+            type: integer
+          examples:
+            ejemplo:
+              value: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalisisCreate'
+      responses:
+        '201':
+          description: Análisis registrado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analisis'
+        '400':
+          description: Payload inválido. Faltan campos requeridos o tienen un formato incorrecto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: El activo solicitado no fue encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /activos/{id}/analisis/{analisisId}:
+    delete:
+      summary: Eliminar un análisis específico de un activo
+      operationId: deleteAnalisis
+      tags:
+        - Análisis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único del activo.
+          schema:
+            type: integer
+          examples:
+            ejemplo:
+              value: 1
+        - name: analisisId
+          in: path
+          required: true
+          description: ID único del análisis a eliminar.
+          schema:
+            type: integer
+          examples:
+            ejemplo:
+              value: 101
+      responses:
+        '204':
+          description: Análisis eliminado exitosamente. (Sin contenido en la respuesta)
+        '404':
+          description: El análisis solicitado (o el activo) no fue encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    Activo:
+      type: object
+      description: Representa un instrumento financiero bajo monitoreo.
+      required:
+        - id
+        - ticker
+        - nombre
+        - tipo
+        - mercado
+      properties:
+        id:
+          type: integer
+          description: ID único autogenerado del activo.
+          examples:
+            - 1
+        ticker:
+          type: string
+          description: Símbolo de cotización del activo (ej. AAPL, YPFD).
+          examples:
+            - "GGAL"
+        nombre:
+          type: string
+          description: Nombre descriptivo de la empresa o emisión.
+          examples:
+            - "Grupo Financiero Galicia S.A."
+        tipo:
+          type: string
+          enum: [accion, ON]
+          description: Tipo de instrumento financiero.
+          examples:
+            - "accion"
+        mercado:
+          type: string
+          enum: [BYMA, NYSE, NASDAQ]
+          description: Mercado donde cotiza el activo.
+          examples:
+            - "BYMA"
+    ActivoCreate:
+      type: object
+      description: Payload para crear un nuevo activo (sin el ID).
+      required:
+        - ticker
+        - nombre
+        - tipo
+        - mercado
+      properties:
+        ticker:
+          type: string
+          description: Símbolo de cotización del activo (ej. AAPL, YPFD).
+          examples:
+            - "GGAL"
+        nombre:
+          type: string
+          description: Nombre descriptivo de la empresa o emisión.
+          examples:
+            - "Grupo Financiero Galicia S.A."
+        tipo:
+          type: string
+          enum: [accion, ON]
+          description: Tipo de instrumento financiero.
+          examples:
+            - "accion"
+        mercado:
+          type: string
+          enum: [BYMA, NYSE, NASDAQ]
+          description: Mercado donde cotiza el activo.
+          examples:
+            - "BYMA"
+    ActivoDetalle:
+      description: Detalle del activo incluyendo las señales de análisis más recientes.
+      allOf:
+        - $ref: '#/components/schemas/Activo'
+        - type: object
+          properties:
+            señales_recientes:
+              type: object
+              description: Señales más recientes generadas por los agentes para este activo.
+              properties:
+                tecnico:
+                  oneOf:
+                    - $ref: '#/components/schemas/Senal'
+                    - type: 'null'
+                  description: Señal más reciente del análisis técnico, null si no hay.
+                sentimiento:
+                  oneOf:
+                    - $ref: '#/components/schemas/Senal'
+                    - type: 'null'
+                  description: Señal más reciente del análisis de sentimiento, null si no hay.
+    Senal:
+      type: string
+      enum: [compra, venta, hold]
+      description: Recomendación generada por el agente.
+      examples:
+        - "compra"
+    Analisis:
+      type: object
+      required:
+        - id
+        - tipo
+        - señal
+        - confianza
+        - resumen
+        - created_at
+      properties:
+        id:
+          type: integer
+          description: ID único autogenerado del análisis.
+          examples:
+            - 101
+        tipo:
+          type: string
+          enum: [tecnico, sentimiento]
+          description: El enfoque del agente que generó el análisis.
+          examples:
+            - "tecnico"
+        señal:
+          $ref: '#/components/schemas/Senal'
+        confianza:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Nivel de certeza del agente en la señal (0 = mínimo, 1 = máximo).
+          examples:
+            - 0.82
+        resumen:
+          type: string
+          description: Explicación breve o rationale detrás de la señal.
+          examples:
+            - "RSI en zona de sobreventa con cruce alcista en MACD."
+        created_at:
+          type: string
+          format: date-time
+          description: Marca de tiempo de cuando se registró el análisis.
+          examples:
+            - "2026-05-17T15:30:00Z"
+    AnalisisCreate:
+      type: object
+      description: Payload que envían los agentes (sin ID ni created_at).
+      required:
+        - tipo
+        - señal
+        - confianza
+        - resumen
+      properties:
+        tipo:
+          type: string
+          enum: [tecnico, sentimiento]
+          description: El enfoque del agente que generó el análisis.
+          examples:
+            - "tecnico"
+        señal:
+          $ref: '#/components/schemas/Senal'
+        confianza:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Nivel de certeza del agente en la señal (0 = mínimo, 1 = máximo).
+          examples:
+            - 0.82
+        resumen:
+          type: string
+          description: Explicación breve o rationale detrás de la señal.
+          examples:
+            - "RSI en zona de sobreventa con cruce alcista en MACD."
+    ErrorResponse:
+      type: object
+      description: Formato estandarizado para la devolución de errores de la API.
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Descripción del error ocurrido (ej. "El activo solicitado no existe").
+          examples:
+            - "El activo solicitado no fue encontrado."

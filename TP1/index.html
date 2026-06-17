@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selector de Asientos - Cine Caótico</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --accent-color: #e50914; /* Rojo tipo cine */
+            --seat-available: #4CAF50;
+            --seat-unavailable: #F44336;
+            --seat-selected: #FFD700; /* Dorado */
+            --border-radius: 8px;
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            background-color: var(--surface-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header-subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            gap: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .config-panel {
+            background-color: var(--surface-color);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .config-title {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .controls-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            position: relative; /* Para animar los botones si quisieramos */
+        }
+
+        .quantity-display {
+            font-size: 3rem;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: center;
+            user-select: none;
+        }
+
+        .btn-control {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            border: 2px solid var(--text-secondary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .btn-control:hover:not(:disabled) {
+            border-color: var(--text-primary);
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .btn-control:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+        
+        .btn-control:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #555;
+        }
+
+        .screen-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .screen {
+            width: 80%;
+            height: 40px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, transparent 100%);
+            border-top: 4px solid #fff;
+            border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+            box-shadow: 0 -10px 20px rgba(255,255,255,0.1);
+            position: relative;
+        }
+        
+        .screen::after {
+            content: "PANTALLA";
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            letter-spacing: 5px;
+        }
+
+        .seating-map-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 20px;
+        }
+
+        .seating-grid {
+            display: grid;
+            grid-template-columns: 30px repeat(6, 40px); /* 1 columna para letras, 6 para asientos */
+            grid-template-rows: 30px repeat(8, 40px); /* 1 fila para números, 8 para asientos */
+            gap: 15px;
+            align-items: center;
+            justify-items: center;
+        }
+
+        .col-label, .row-label {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .seat {
+            width: 40px;
+            height: 40px;
+            background-color: var(--seat-available);
+            border-radius: 8px 8px 4px 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            color: white;
+            transition: background-color var(--transition-speed), transform 0.1s;
+            user-select: none;
+            position: relative;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+        }
+        
+        .seat::before {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 2px;
+            right: 2px;
+            height: 6px;
+            background-color: inherit;
+            border-radius: 0 0 4px 4px;
+            filter: brightness(0.7);
+        }
+
+        .seat:hover:not(.unavailable) {
+            filter: brightness(1.2);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+        }
+        
+        .seat:active:not(.unavailable) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+        }
+
+        .seat.unavailable {
+            background-color: var(--seat-unavailable);
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
+        .seat.selected {
+            background-color: var(--seat-selected);
+            color: #000;
+            font-weight: bold;
+            animation: pop 0.3s ease;
+        }
+
+        /* Modal y Toast */
+        .dialog-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .dialog-overlay.active {
+            opacity: 1; pointer-events: auto;
+        }
+        
+        .dialog-box {
+            background: var(--surface-color);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            border: 2px solid var(--accent-color);
+            max-width: 80%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+        }
+        
+        .dialog-btn {
+            margin-top: 20px;
+            background: var(--accent-color);
+            color: white; border: none; padding: 10px 20px; 
+            border-radius: 4px; cursor: pointer; font-weight: bold;
+        }
+        
+        .toast-container {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; gap: 10px; z-index: 999;
+            pointer-events: none;
+        }
+        
+        .toast {
+            background: #ff9800; color: #000; font-weight: bold; padding: 10px 20px;
+            border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            animation: slideDown 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+        }
+        
+        @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; } }
+
+        .native-dialog {
+            background: var(--surface-color);
+            color: var(--text-primary);
+            border: 2px solid var(--accent-color);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+        }
+        
+        .native-dialog::backdrop {
+            background: rgba(0,0,0,0.8);
+        }
+        
+        .dialog-actions {
+            display: flex; gap: 15px; justify-content: center; margin-top: 20px;
+        }
+        
+        .fugitive-btn {
+            position: fixed;
+            background: var(--seat-selected);
+            color: #000;
+            font-weight: bold;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            z-index: 2000;
+            transition: top 0.4s ease-in-out, left 0.4s ease-in-out;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+        }
+        
+        .math-input {
+            padding: 10px; margin-top: 15px; border-radius: 4px; 
+            border: 1px solid var(--text-secondary); background: var(--bg-color); 
+            color: white; font-size: 1.2rem; width: 120px; text-align: center;
+        }
+
+        .hold-progress {
+            position: absolute; bottom: 0; left: 0; height: 6px; width: 0%;
+            background-color: #FFD700;
+            transition: width 3s linear;
+            border-radius: 0 0 4px 4px;
+            pointer-events: none;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-seat {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.7rem;
+            color: white;
+        }
+
+        footer {
+            background-color: var(--surface-color);
+            padding: 20px 40px;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 50px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        .summary {
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .summary-text {
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .selected-seats-list {
+            font-weight: bold;
+            color: var(--seat-selected);
+            min-height: 1.5em; /* Para que no salte el layout cuando está vacío */
+        }
+
+        .btn-confirm {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: auto;
+            min-width: 200px;
+        }
+
+        .btn-confirm:hover:not(:disabled) {
+            background-color: #ff1a1a;
+            box-shadow: 0 0 15px rgba(229, 9, 20, 0.5);
+        }
+
+        .btn-confirm:disabled {
+            background-color: #333;
+            color: #777;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Selección de Asientos</h1>
+        <span class="header-subtitle">¡Donde el azar decide!</span>
+    </header>
+
+    <main>
+        <section class="config-panel" aria-label="Configuración de entradas">
+            <h2 class="config-title">Entradas a comprar</h2>
+            <div class="controls-container" id="controls-container">
+                <!-- Los botones se insertarán y reordenarán vía JS -->
+                <button type="button" class="btn-control" id="btn-minus" aria-label="Restar entrada">−</button>
+                <div class="quantity-display" id="quantity-display" aria-live="polite">1</div>
+                <button type="button" class="btn-control" id="btn-plus" aria-label="Sumar entrada">+</button>
+            </div>
+            <p style="font-size: 0.8rem; color: #888; text-align: center; margin-top: 5px;">
+                Cuidado: Los botones son un poco... impredecibles.
+            </p>
+        </section>
+
+        <section aria-label="Mapa de asientos">
+            <div class="screen-container">
+                <div class="screen"></div>
+            </div>
+
+            <div class="seating-map-container">
+                <div class="seating-grid" id="seating-grid" role="grid" aria-label="Cuadrícula de asientos">
+                    <!-- Los encabezados y asientos se generarán con JS -->
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-seat" style="background-color: var(--seat-available)">✓</div>
+                    <span>Disponible</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-seat" style="background-color: var(--seat-unavailable)">✗</div>
+                    <span>Ocupado</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-seat" style="background-color: var(--seat-selected); color: black;">★</div>
+                    <span>Tu Selección</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Elementos flotantes para notificaciones -->
+        <div class="toast-container" id="toast-container" aria-live="polite"></div>
+        <div class="dialog-overlay" id="dialog-overlay" role="dialog" aria-modal="true">
+            <div class="dialog-box">
+                <p id="dialog-message" style="font-size: 1.2rem;"></p>
+                <button class="dialog-btn" onclick="document.getElementById('dialog-overlay').classList.remove('active')">Entendido</button>
+            </div>
+        </div>
+
+        <dialog id="dialog-step1" class="native-dialog">
+            <h3 style="font-size: 1.5rem; margin-bottom: 15px;">¿Estás seguro?</h3>
+            <p>Has seleccionado los siguientes asientos:</p>
+            <p id="step1-seats-list" style="font-size: 1.5rem; font-weight: bold; color: var(--seat-selected); margin: 15px 0;"></p>
+            <div class="dialog-actions">
+                <button id="btn-step1-yes" class="dialog-btn">Sí, confirmar</button>
+                <button id="btn-step1-no" class="dialog-btn" style="background: #555;">Cancelar</button>
+            </div>
+        </dialog>
+
+        <button id="btn-fugitive" class="fugitive-btn" style="display: none;">CONFIRMAR RESERVA</button>
+
+        <dialog id="dialog-step3" class="native-dialog">
+            <h3 style="font-size: 1.5rem; margin-bottom: 15px;">Pregunta de Seguridad</h3>
+            <p id="math-question" style="font-size: 1.2rem;"></p>
+            <input type="number" id="math-answer" class="math-input" placeholder="Respuesta">
+            <p id="math-error" style="color: var(--seat-unavailable); font-size: 1rem; margin-top: 10px; display: none; font-weight: bold;">Respuesta incorrecta. Intentá de nuevo.</p>
+            <div class="dialog-actions">
+                <button id="btn-math-submit" class="dialog-btn">Enviar</button>
+            </div>
+        </dialog>
+    </main>
+
+    <footer>
+        <div class="summary">
+            <div class="summary-text">Asientos seleccionados: <span id="selection-count">0</span> / <span id="target-count">1</span></div>
+            <div class="selected-seats-list" id="selected-list">Ninguno</div>
+        </div>
+        <button type="button" class="btn-confirm" id="btn-confirm" disabled>Confirmar Compra</button>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Elementos del DOM
+            const quantityDisplay = document.getElementById('quantity-display');
+            const controlsContainer = document.getElementById('controls-container');
+            const btnMinus = document.getElementById('btn-minus');
+            const btnPlus = document.getElementById('btn-plus');
+            const seatingGrid = document.getElementById('seating-grid');
+            const selectionCountDisplay = document.getElementById('selection-count');
+            const targetCountDisplay = document.getElementById('target-count');
+            const selectedListDisplay = document.getElementById('selected-list');
+            const btnConfirm = document.getElementById('btn-confirm');
+
+            const dialogStep1 = document.getElementById('dialog-step1');
+            const step1SeatsList = document.getElementById('step1-seats-list');
+            const btnStep1Yes = document.getElementById('btn-step1-yes');
+            const btnStep1No = document.getElementById('btn-step1-no');
+            
+            const btnFugitive = document.getElementById('btn-fugitive');
+            
+            const dialogStep3 = document.getElementById('dialog-step3');
+            const mathQuestion = document.getElementById('math-question');
+            const mathAnswer = document.getElementById('math-answer');
+            const mathError = document.getElementById('math-error');
+            const btnMathSubmit = document.getElementById('btn-math-submit');
+
+            let flowActive = false;
+            let fugitiveInterval = null;
+            let expectedMathAnswer = 0;
+
+            // Estado de la aplicación
+            let quantity = 1;
+            const minQuantity = 1;
+            const maxQuantity = 6;
+            const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+            const cols = 6;
+            let selectedSeats = new Set(); // Guarda los IDs de los asientos seleccionados
+            let allSeatElements = []; // Referencias a todos los elementos DOM de asientos
+            
+            // Estado del Hold
+            let holdingSeatId = null;
+            let holdTimeout = null;
+            let holdSeatElement = null;
+
+            // Iconos
+            const iconAvailable = '✓';
+            const iconUnavailable = '✗';
+            const iconSelected = '★';
+
+            // Utilidades UI
+            function showDialog(msg) {
+                const overlay = document.getElementById('dialog-overlay');
+                document.getElementById('dialog-message').textContent = msg;
+                overlay.classList.add('active');
+            }
+
+            function showToast(msg) {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.textContent = msg;
+                container.appendChild(toast);
+                // El toast se auto-elimina de la vista con CSS animation, pero limpiamos el DOM
+                setTimeout(() => {
+                    if (toast.parentElement) toast.remove();
+                }, 3000);
+            }
+
+            function updateQuantityDisplay() {
+                quantityDisplay.textContent = quantity;
+                targetCountDisplay.textContent = quantity;
+                checkConfirmation();
+                
+                // Actualizar estado disabled si estamos en los límites para no romper lógica,
+                // aunque el intercambio lo hace divertido.
+                btnMinus.disabled = quantity <= minQuantity;
+                btnPlus.disabled = quantity >= maxQuantity;
+            }
+
+            function shuffleButtons() {
+                // Truco: movemos el número al principio o al final de los botones aleatoriamente,
+                // o usamos order de flexbox
+                const randomOrder = Math.random() > 0.5;
+                
+                if (randomOrder) {
+                    controlsContainer.insertBefore(btnMinus, quantityDisplay);
+                    controlsContainer.appendChild(btnPlus);
+                } else {
+                    controlsContainer.insertBefore(btnPlus, quantityDisplay);
+                    controlsContainer.appendChild(btnMinus);
+                }
+            }
+
+            function handleQuantityChange(change) {
+                const newQuantity = quantity + change;
+                if (newQuantity >= minQuantity && newQuantity <= maxQuantity) {
+                    quantity = newQuantity;
+                    
+                    // Si el usuario reduce la cantidad y tiene más asientos seleccionados de los permitidos,
+                    // deseleccionamos el último que eligió (o en este caso, convertimos a array y sacamos el último)
+                    if (selectedSeats.size > quantity) {
+                        const seatsArray = Array.from(selectedSeats);
+                        while(selectedSeats.size > quantity) {
+                            const seatIdToRemove = seatsArray.pop();
+                            selectedSeats.delete(seatIdToRemove);
+                            const seatElement = document.getElementById(seatIdToRemove);
+                            if(seatElement) {
+                                seatElement.classList.remove('selected');
+                                seatElement.textContent = iconAvailable;
+                            }
+                        }
+                        updateSelectionDisplay();
+                    }
+                    
+                    updateQuantityDisplay();
+                }
+                shuffleButtons(); // El intercambio diabólico en CADA click
+            }
+
+            btnMinus.addEventListener('click', () => handleQuantityChange(-1));
+            btnPlus.addEventListener('click', () => handleQuantityChange(1));
+
+            function generateSeatingMap() {
+                seatingGrid.innerHTML = '';
+                
+                // Esquina superior izquierda vacía
+                const emptyCorner = document.createElement('div');
+                emptyCorner.setAttribute('aria-hidden', 'true');
+                seatingGrid.appendChild(emptyCorner);
+                
+                // Encabezados de columnas (1-6)
+                for (let col = 1; col <= cols; col++) {
+                    const colLabel = document.createElement('div');
+                    colLabel.className = 'col-label';
+                    colLabel.setAttribute('role', 'columnheader');
+                    colLabel.textContent = col;
+                    seatingGrid.appendChild(colLabel);
+                }
+
+                rows.forEach(rowLabel => {
+                    // Etiqueta de fila
+                    const rowHeader = document.createElement('div');
+                    rowHeader.className = 'row-label';
+                    rowHeader.setAttribute('role', 'rowheader');
+                    rowHeader.textContent = rowLabel;
+                    seatingGrid.appendChild(rowHeader);
+
+                    for (let col = 1; col <= cols; col++) {
+                        const seatId = `${rowLabel}${col}`;
+                        const seat = document.createElement('div');
+                        seat.className = 'seat';
+                        seat.id = seatId;
+                        seat.setAttribute('role', 'gridcell');
+                        seat.setAttribute('aria-label', `Asiento ${seatId} disponible`);
+                        seat.textContent = iconAvailable;
+                        
+                        // Eventos para la mecánica de hold
+                        seat.addEventListener('mousedown', (e) => startHold(seat, seatId, e));
+                        seat.addEventListener('touchstart', (e) => startHold(seat, seatId, e), { passive: false });
+                        
+                        seatingGrid.appendChild(seat);
+                        allSeatElements.push(seat);
+                    }
+                });
+            }
+
+            function startHold(seat, seatId, e) {
+                // Prevenir comportamiento por defecto en táctil
+                if (e.type === 'touchstart') e.preventDefault();
+                
+                // Si ya estamos sosteniendo uno, ignorar
+                if (holdingSeatId) return;
+
+                if (seat.classList.contains('unavailable')) {
+                    showDialog("Este asiento está ocupado.");
+                    return;
+                }
+
+                if (seat.classList.contains('selected')) {
+                    // No hacer nada extra si el usuario ya lo tiene (la pérdida es por azar)
+                    return;
+                }
+
+                if (selectedSeats.size >= quantity) {
+                    showDialog("Ya alcanzaste la cantidad de asientos que configuraste.");
+                    return;
+                }
+
+                holdingSeatId = seatId;
+                holdSeatElement = seat;
+
+                // Crear barra de progreso
+                const bar = document.createElement('div');
+                bar.className = 'hold-progress';
+                seat.appendChild(bar);
+                
+                // Forzar reflow y animar
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        if (bar) bar.style.width = '100%';
+                    });
+                });
+
+                holdTimeout = setTimeout(() => {
+                    completeHold(seat, seatId);
+                }, 3000);
+            }
+
+            function cancelHold(reasonMsg) {
+                if (!holdingSeatId) return;
+                
+                clearTimeout(holdTimeout);
+                
+                if (holdSeatElement) {
+                    const bar = holdSeatElement.querySelector('.hold-progress');
+                    if (bar) bar.remove();
+                }
+                
+                holdingSeatId = null;
+                holdSeatElement = null;
+
+                if (reasonMsg) {
+                    showDialog(reasonMsg);
+                }
+            }
+
+            function stopHold(e) {
+                if (!holdingSeatId) return;
+                cancelHold("Soltaste antes de los 3 segundos.");
+            }
+
+            // Escuchar en el documento por si el mouse o el dedo se sale del asiento
+            document.addEventListener('mouseup', stopHold);
+            document.addEventListener('touchend', stopHold);
+            document.addEventListener('touchcancel', stopHold);
+
+            function completeHold(seat, seatId) {
+                if (holdSeatElement) {
+                    const bar = holdSeatElement.querySelector('.hold-progress');
+                    if (bar) bar.remove();
+                }
+                
+                holdingSeatId = null;
+                holdSeatElement = null;
+
+                selectedSeats.add(seatId);
+                seat.classList.add('selected');
+                seat.textContent = iconSelected;
+                
+                updateSelectionDisplay();
+
+                if (selectedSeats.size === quantity) {
+                    showDialog("¡Asientos completados! Ve al resumen y confirma tu compra antes de que la suerte cambie.");
+                }
+            }
+
+            function updateSelectionDisplay() {
+                selectionCountDisplay.textContent = selectedSeats.size;
+                
+                if (selectedSeats.size === 0) {
+                    selectedListDisplay.textContent = 'Ninguno';
+                } else {
+                    // Ordenar asientos para mostrarlos bonito (ej. A1, A2, B1)
+                    const sortedSeats = Array.from(selectedSeats).sort((a, b) => {
+                        if (a[0] !== b[0]) return a[0].localeCompare(b[0]);
+                        return parseInt(a.substring(1)) - parseInt(b.substring(1));
+                    });
+                    selectedListDisplay.textContent = sortedSeats.join(', ');
+                }
+                
+                checkConfirmation();
+            }
+
+            function checkConfirmation() {
+                // Habilitar botón solo si seleccionó exactamente la cantidad deseada
+                if (selectedSeats.size > 0 && selectedSeats.size === quantity) {
+                    btnConfirm.disabled = false;
+                } else {
+                    btnConfirm.disabled = true;
+                }
+            }
+
+            // Iniciar Paso 1
+            btnConfirm.addEventListener('click', () => {
+                if (selectedSeats.size !== quantity) return;
+                flowActive = true;
+                const sortedSeats = Array.from(selectedSeats).sort((a, b) => {
+                    if (a[0] !== b[0]) return a[0].localeCompare(b[0]);
+                    return parseInt(a.substring(1)) - parseInt(b.substring(1));
+                });
+                step1SeatsList.textContent = sortedSeats.join(', ');
+                dialogStep1.showModal();
+            });
+
+            // Cancelar Paso 1
+            btnStep1No.addEventListener('click', () => {
+                dialogStep1.close();
+                flowActive = false;
+            });
+            
+            // Si cierra el diálogo con la tecla Escape
+            dialogStep1.addEventListener('cancel', () => { flowActive = false; });
+            dialogStep3.addEventListener('cancel', (e) => { e.preventDefault(); }); // ¡No escapar del paso 3!
+
+            // Confirmar Paso 1 -> Iniciar Paso 2
+            btnStep1Yes.addEventListener('click', () => {
+                if (selectedSeats.size !== quantity) {
+                    abortFlow("Perdiste asientos mientras pensabas. Vuelve a completarlos.");
+                    return;
+                }
+                dialogStep1.close();
+                
+                // Configurar y mostrar botón fugitivo
+                btnFugitive.style.display = 'block';
+                moveFugitiveButton();
+                fugitiveInterval = setInterval(moveFugitiveButton, 500);
+            });
+
+            // Función para mover el botón fugitivo
+            function moveFugitiveButton() {
+                // Posiciones entre 10% y 80% para asegurar que se vea en pantalla
+                const top = 10 + Math.random() * 70;
+                const left = 10 + Math.random() * 70;
+                btnFugitive.style.top = `${top}%`;
+                btnFugitive.style.left = `${left}%`;
+            }
+
+            // Click en el botón fugitivo -> Iniciar Paso 3
+            btnFugitive.addEventListener('click', () => {
+                if (dialogStep3.open) return;
+                
+                const a = Math.floor(Math.random() * 9) + 1;
+                const b = Math.floor(Math.random() * 9) + 1;
+                expectedMathAnswer = a * b;
+                
+                mathQuestion.textContent = `¿Cuánto es ${a} × ${b}?`;
+                mathAnswer.value = '';
+                mathError.style.display = 'none';
+                dialogStep3.showModal();
+            });
+
+            // Validar la pregunta matemática
+            function checkMath() {
+                const answer = parseInt(mathAnswer.value, 10);
+                if (answer === expectedMathAnswer) {
+                    // ÉXITO FINAL
+                    abortFlow(); // Limpiamos intervalos y diálogos
+                    showFinalSuccess();
+                } else {
+                    // ERROR
+                    mathError.style.display = 'block';
+                    mathAnswer.value = '';
+                    mathAnswer.focus();
+                }
+            }
+
+            btnMathSubmit.addEventListener('click', checkMath);
+            mathAnswer.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') checkMath();
+            });
+
+            function showFinalSuccess() {
+                const sortedSeats = Array.from(selectedSeats).sort((a, b) => {
+                    if (a[0] !== b[0]) return a[0].localeCompare(b[0]);
+                    return parseInt(a.substring(1)) - parseInt(b.substring(1));
+                });
+                
+                document.querySelector('main').innerHTML = `
+                    <div style="text-align: center; padding: var(--spacing-xxxl) var(--spacing-lg); background-color: var(--surface-color); border-radius: var(--radius-lg); width: 100%; max-width: 500px; box-shadow: 0 10px 25px var(--shadow-strong);">
+                        <h2 style="color: var(--seat-available); font-size: 2rem; margin-bottom: var(--spacing-lg);">¡Reserva Confirmada!</h2>
+                        <p style="font-size: 1.2rem; margin-bottom: var(--spacing-sm);">Has reservado ${quantity} entrada(s).</p>
+                        <p style="font-size: 1.2rem; margin-bottom: var(--spacing-xl); color: var(--seat-selected); font-weight: bold;">Asientos: ${sortedSeats.join(', ')}</p>
+                        <p style="font-size: 1.2rem; margin-bottom: var(--spacing-xl);">Que disfrutes la película.</p>
+                        <button onclick="location.reload()" class="btn-confirm" style="width: auto;">Volver al inicio</button>
+                    </div>
+                `;
+                document.querySelector('footer').style.display = 'none';
+            }
+
+            // Función de emergencia para cancelar el flujo si el azar nos arruina la vida
+            function abortFlow(msg) {
+                flowActive = false;
+                if (dialogStep1.open) dialogStep1.close();
+                if (dialogStep3.open) dialogStep3.close();
+                clearInterval(fugitiveInterval);
+                btnFugitive.style.display = 'none';
+                if (msg) showDialog(msg);
+            }
+
+            function randomizeSeatsStatus() {
+                // 1. Devolver los 6 asientos actualmente ocupados a verdes (disponibles)
+                const currentlyUnavailable = allSeatElements.filter(seat => seat.classList.contains('unavailable'));
+                
+                const toMakeAvailable = currentlyUnavailable.sort(() => 0.5 - Math.random()).slice(0, 6);
+                
+                toMakeAvailable.forEach(seat => {
+                    seat.classList.remove('unavailable');
+                    seat.textContent = iconAvailable;
+                    seat.setAttribute('aria-label', `Asiento ${seat.id} disponible`);
+                });
+
+                // 2. Elegir 6 nuevos asientos para sabotear (de los disponibles O seleccionados)
+                const availableForSabotage = allSeatElements.filter(seat => !seat.classList.contains('unavailable'));
+                const numToSabotage = Math.min(6, availableForSabotage.length);
+                
+                const toInterrupt = availableForSabotage.sort(() => 0.5 - Math.random()).slice(0, numToSabotage);
+                
+                toInterrupt.forEach(seat => {
+                    if (seat.id === holdingSeatId) {
+                        // Interrumpir el que está siendo sostenido
+                        cancelHold("El asiento se ocupó justo cuando lo ibas a agarrar.");
+                        seat.classList.add('unavailable');
+                        seat.textContent = iconUnavailable;
+                        seat.setAttribute('aria-label', `Asiento ${seat.id} ocupado`);
+                    } else if (seat.classList.contains('selected')) {
+                        // Robar un asiento ya seleccionado
+                        seat.classList.remove('selected');
+                        seat.textContent = iconAvailable;
+                        selectedSeats.delete(seat.id);
+                        updateSelectionDisplay();
+                        showToast(`Perdiste el asiento ${seat.id}. Tenés que volver a seleccionarlo.`);
+                        
+                        if (flowActive) {
+                            abortFlow(`¡Oh no! El azar te quitó el asiento ${seat.id} en medio del proceso. Vuelve a completarlos.`);
+                        }
+                    } else {
+                        // Ocupar uno disponible normal
+                        seat.classList.add('unavailable');
+                        seat.textContent = iconUnavailable;
+                        seat.setAttribute('aria-label', `Asiento ${seat.id} ocupado`);
+                    }
+                });
+            }
+
+            // Inicializar
+            generateSeatingMap();
+            updateQuantityDisplay();
+            
+            // Iniciar el caos de los asientos cada 2 segundos
+            // Primero generamos unos cuantos ocupados de entrada
+            randomizeSeatsStatus();
+            setInterval(randomizeSeatsStatus, 2000);
+        });
+    </script>
+</body>
+</html>

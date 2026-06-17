@@ -151,6 +151,7 @@
       box-shadow: 0 10px 30px rgba(0, 104, 181, 0.15);
       border-left: 8px solid var(--intel-cyan);
       width: 100%;
+      min-height: 60vh;
       display: flex; align-items: center; justify-content: space-between; gap: 2rem;
     }
     .hero-slide::after {
@@ -159,25 +160,25 @@
     }
     .hero-badge {
       display: inline-block; background: var(--intel-blue); color: #fff; font-weight: 700;
-      text-transform: uppercase; font-size: 0.72rem; letter-spacing: 1.5px; padding: 0.3rem 1rem; border-radius: 2px; margin-bottom: 1.25rem;
+      text-transform: uppercase; font-size: 0.82rem; letter-spacing: 1.8px; padding: 0.4rem 1.2rem; border-radius: 2px; margin-bottom: 1.6rem;
     }
-    .hero-title { font-size: 2.9rem; font-weight: 700; line-height: 1.12; margin-bottom: 1.1rem; color: #fff; }
+    .hero-title { font-size: 3.8rem; font-weight: 700; line-height: 1.1; margin-bottom: 1.4rem; color: #fff; }
     .hero-title span { color: var(--intel-cyan); }
-    .hero-subtitle { font-size: 1.1rem; color: #e5e7eb; max-width: 760px; line-height: 1.55; font-weight: 300; }
+    .hero-subtitle { font-size: 1.25rem; color: #e5e7eb; max-width: 820px; line-height: 1.55; font-weight: 300; }
     .hero-meta {
-      display: flex; gap: 2.5rem; font-size: 0.82rem; color: #9ca3af;
-      border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 1.25rem; margin-top: 2rem; flex-wrap: wrap;
+      display: flex; gap: 3rem; font-size: 0.98rem; color: #9ca3af;
+      border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 1.5rem; margin-top: 2.5rem; flex-wrap: wrap;
     }
     .hero-meta strong { color: #fff; }
     .hero-photo {
-      flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
     }
     .hero-photo img {
-      width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--intel-cyan);
-      object-fit: cover; box-shadow: 0 0 25px rgba(0, 199, 253, 0.45);
+      width: 200px; height: 200px; border-radius: 50%; border: 5px solid var(--intel-cyan);
+      object-fit: cover; box-shadow: 0 0 35px rgba(0, 199, 253, 0.45);
     }
     .hero-photo span {
-      font-size: 0.72rem; color: var(--intel-cyan); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+      font-size: 0.82rem; color: var(--intel-cyan); font-weight: 700; text-transform: uppercase; letter-spacing: 1.8px;
     }
 
     /* ARQUITECTURA (slide interactiva) */
@@ -371,19 +372,51 @@
           <h1 class="hero-title">Dashboard de Análisis de <span>Activos Financieros</span></h1>
           <div class="hero-meta">
             <div>Materia: <strong>Introducción al Desarrollo de Software Asistido por IA (CEIA — UBA)</strong></div>
-            <div>Stack: <strong>FastAPI + SQLModel + SQLite</strong></div>
-            <div>Autor: <strong>Erlin Rey</strong></div>
           </div>
         </div>
         <div class="hero-photo">
           <img src="../propuesta/fotoerlin.jpg" alt="Erlin Rey" onerror="this.parentNode.style.display='none'">
-          <span>Expositor</span>
+          <span>Erlin Rey</span>
         </div>
       </div>
     </div>
 
-    <!-- SLIDE 2: ARQUITECTURA (dos esquemas; el orden visual lo fija style="order:N" en cada bloque: datos primero, análisis técnico después) -->
-    <div class="slide" id="slide-2" style="gap:0.7rem;">
+    <!-- SLIDE 2: STACK TECNOLOGICO -->
+    <div class="slide" id="slide-2">
+      <div class="slide-header">
+        <div class="slide-tag">Stack tecnológico</div>
+        <h2 class="slide-title">Qué tecnología sostiene cada capa</h2>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">Backend · API REST <span class="badge badge-accent">CRUD</span></div>
+          <p><strong>FastAPI + SQLModel.</strong> Endpoints REST validados contra <code>openapi.yaml</code>; documentación Swagger autogenerada en <code>/docs</code>.</p>
+        </div>
+        <div class="card" style="border-top-color: var(--intel-cyan);">
+          <div class="card-title">Base de datos <span class="badge badge-cyan">Persistencia</span></div>
+          <p><strong>SQLite</strong> (<code>data/activos.db</code>). Una sola base con activos, análisis y la tabla <code>precios</code> (OHLC).</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Frontend <span class="badge badge-accent">SPA</span></div>
+          <p><strong>HTML/CSS/JS vanilla</strong>, single-file (<code>frontend/index.html</code>). Sin frameworks; servido en <code>:3000</code>.</p>
+        </div>
+        <div class="card" style="border-top-color: var(--intel-cyan);">
+          <div class="card-title">Análisis técnico <span class="badge badge-cyan">Dominio</span></div>
+          <p><strong>yfinance + pandas</strong>, en <code>scripts/</code>, fuera del backend. Calcula RSI, MACD y SMA sobre precios históricos.</p>
+        </div>
+        <div class="card" style="border-top-color: var(--intel-deep-blue);">
+          <div class="card-title">Tooling <span class="badge badge-dark">Entorno</span></div>
+          <p><strong>uv</strong> para dependencias y ejecución reproducible del proyecto y de los scripts.</p>
+        </div>
+        <div class="card" style="border-top-color: var(--intel-deep-blue);">
+          <div class="card-title">Tests <span class="badge badge-dark">Calidad</span></div>
+          <p><strong>pytest.</strong> Cubre endpoints (contrato), indicadores, mercado e histórico. Obligatorio en verde antes de cerrar.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: ARQUITECTURA (dos esquemas; el orden visual lo fija style="order:N" en cada bloque: datos primero, análisis técnico después) -->
+    <div class="slide" id="slide-3" style="gap:0.7rem;">
       <div class="slide-header">
         <div class="slide-tag">Arquitectura e interacción entre componentes</div>
         <h2 class="slide-title">Dos circuitos sobre los mismos componentes</h2>
@@ -414,7 +447,7 @@
             <g class="node" id="n-frontend">
               <rect x="24" y="40" width="180" height="64" rx="6"></rect>
               <text class="n-title" x="114" y="68" text-anchor="middle">Frontend</text>
-              <text class="n-sub" x="114" y="88" text-anchor="middle">:3000 · vanilla</text>
+              <text class="n-sub" x="114" y="88" text-anchor="middle">vanilla</text>
             </g>
             <g class="node" id="n-skill">
               <rect x="24" y="200" width="180" height="64" rx="6"></rect>
@@ -424,8 +457,7 @@
             <g class="node" id="n-api">
               <rect x="360" y="120" width="192" height="96" rx="6"></rect>
               <text class="n-title" x="456" y="150" text-anchor="middle">Backend · API</text>
-              <text class="n-sub" x="456" y="170" text-anchor="middle">FastAPI · :8000</text>
-              <text class="n-sub" x="456" y="188" text-anchor="middle">solo CRUD</text>
+              <text class="n-sub" x="456" y="178" text-anchor="middle">FastAPI</text>
             </g>
             <g class="node" id="n-scripts">
               <rect x="700" y="30" width="252" height="112" rx="6"></rect>
@@ -498,13 +530,12 @@
           <!-- NODES -->
           <g class="node" id="m-frontend">
             <rect x="24" y="92" width="150" height="60" rx="6"></rect>
-            <text class="n-title" x="99" y="118" text-anchor="middle">Frontend</text>
-            <text class="n-sub" x="99" y="138" text-anchor="middle">:3000</text>
+            <text class="n-title" x="99" y="126" text-anchor="middle">Frontend</text>
           </g>
           <g class="node" id="m-api">
             <rect x="270" y="90" width="162" height="68" rx="6"></rect>
-            <text class="n-title" x="351" y="116" text-anchor="middle">Backend · API</text>
-            <text class="n-sub" x="351" y="136" text-anchor="middle">FastAPI · solo CRUD</text>
+            <text class="n-title" x="351" y="124" text-anchor="middle">Backend · API</text>
+            <text class="n-sub" x="351" y="144" text-anchor="middle">FastAPI</text>
           </g>
           <g class="node" id="m-mercado">
             <rect x="516" y="18" width="216" height="58" rx="6"></rect>
@@ -532,8 +563,8 @@
       </div>
     </div>
 
-    <!-- SLIDE 3: CONFIGURACIONES CLAUDE CODE -->
-    <div class="slide" id="slide-3">
+    <!-- SLIDE 4: CONFIGURACIONES CLAUDE CODE -->
+    <div class="slide" id="slide-4">
       <div class="slide-header">
         <div class="slide-tag">Configuraciones de Claude Code</div>
         <h2 class="slide-title">Qué gobierna al agente, y en qué nivel</h2>
@@ -587,16 +618,16 @@
       </div>
     </div>
 
-    <!-- SLIDE 4: DEMO -->
-    <div class="slide" id="slide-4">
+    <!-- SLIDE 5: DEMO -->
+    <div class="slide" id="slide-5">
       <div class="demo-hero">
         <div class="demo-word">DEM<span>O</span></div>
         <div class="demo-sub">Dashboard en vivo — <b>start.bat</b> → <b>localhost:3000</b></div>
       </div>
     </div>
 
-    <!-- SLIDE 5: FLUJO SUPERPOWERS -->
-    <div class="slide" id="slide-5">
+    <!-- SLIDE 6: FLUJO SUPERPOWERS -->
+    <div class="slide" id="slide-6">
       <div class="slide-header">
         <div class="slide-tag">Proceso de desarrollo · Superpowers</div>
         <h2 class="slide-title">De la idea al merge: un pipeline con artefactos versionados</h2>
@@ -675,8 +706,8 @@
       </div>
     </div>
 
-    <!-- SLIDE 6: CIERRE -->
-    <div class="slide" id="slide-6">
+    <!-- SLIDE 7: CIERRE -->
+    <div class="slide" id="slide-7">
       <div class="demo-hero" style="gap:1.2rem;">
         <div class="demo-word" style="font-size:5rem; letter-spacing:0.08em;">GRACIAS</div>
         <div class="demo-sub"><b>Preguntas</b></div>
@@ -705,7 +736,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       const slides = document.querySelectorAll('.slide');
       const totalSlides = slides.length;
-      const ARCH_SLIDE = 1; // slide 2 (0-based)
+      const ARCH_SLIDE = 2; // slide 3 (0-based)
       let current = 0;
 
       const btnPrev = document.getElementById('btn-prev');
