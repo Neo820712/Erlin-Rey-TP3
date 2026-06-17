@@ -12,7 +12,7 @@ técnicos reales (RSI, MACD, SMA) sobre precios históricos.
 | Backend (API REST) | FastAPI + SQLModel |
 | Base de datos | SQLite (`data/activos.db`) |
 | Frontend | HTML/CSS/JS vanilla, single-file (`frontend/index.html`) |
-| Análisis técnico | yfinance + pandas-ta (en `scripts/`, fuera del backend) |
+| Análisis técnico | yfinance + pandas (en `scripts/`, fuera del backend) |
 | Tooling | uv |
 | Tests | pytest |
 
@@ -75,7 +75,7 @@ tests/
   test_api.py            los 7 endpoints
   test_indicators.py     cálculo de indicadores
   test_mercado.py        endpoints /mercado y modelo MercadoCedear
-  test_prices.py         obtener_ohlc (caché OHLCV)
+  test_prices.py         obtener_ohlc (lectura de la tabla precios)
   test_historico.py      armado del JSON de histórico (puro)
   test_mercado_script.py upsert y armado de filas de mercado.py
 data/

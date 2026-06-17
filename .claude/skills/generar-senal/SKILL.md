@@ -27,7 +27,7 @@ score y la señal vive en `scripts/score_tecnico.py` (compartido con el endpoint
 
 ### Think
 Leer `TICKER` y `tipo`. Tener presentes los modos de fallo que el script puede devolver: backend
-caído, ticker inexistente, `tipo sentimiento` (400), red caída sin caché.
+caído, ticker inexistente, `tipo sentimiento` (400), sin precios en la tabla precios.
 
 ### Act
 Ejecutar el script:
