@@ -135,6 +135,10 @@
     /* Vista de detalle */
     .volver { background: none; color: var(--color-primary); padding: 0; margin-bottom: var(--space-md); }
     .volver:hover { background: none; text-decoration: underline; }
+    .detalle-head { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-sm); }
+    .detalle-head h2 { margin: 0; }
+    #btn-cartera-detalle.btn-quitar { background: var(--color-venta); }
+    #btn-cartera-detalle.btn-quitar:hover { background: var(--color-venta); filter: brightness(0.9); }
     .metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); margin-bottom: var(--space-lg); }
     @media (max-width: 800px) { .metricas { grid-template-columns: 1fr; } }
     .metricas .fila .pill { font-size: 0.7rem; }
@@ -145,6 +149,14 @@
     .periodos button.activo { background: var(--color-primary-dark); }
     #chart-velas, #chart-rsi, #chart-macd { width: 100%; }
     #chart-velas { height: 300px; } #chart-rsi { height: 90px; } #chart-macd { height: 90px; }
+    .chart-block { margin-bottom: var(--space-sm); }
+    .chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; }
+    .chart-title { margin: var(--space-sm) 0 4px; color: var(--color-primary-dark); font-size: 0.85rem; }
+    .chart-legend { display: flex; gap: var(--space-md); font-size: 0.78rem; color: var(--color-text-muted); }
+    .chart-legend .leg { display: inline-flex; align-items: center; gap: 6px; }
+    .chart-legend .sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+    .sw-sma20, .sw-macd { background: var(--chart-sma20); }
+    .sw-sma50, .sw-signal { background: var(--chart-sma50); }
 
     footer { text-align: center; color: var(--color-text-muted); font-size: 0.8rem; padding: var(--space-lg); }
   </style>
@@ -174,16 +186,40 @@
 
     <section id="detalle" style="display:none;">
       <button class="volver" id="btn-volver">← Volver</button>
-      <h2 id="detalle-titulo"></h2>
+      <div class="detalle-head">
+        <h2 id="detalle-titulo"></h2>
+        <button id="btn-cartera-detalle"></button>
+      </div>
       <div class="metricas">
         <div class="panel"><h3>Datos de la acción</h3><div id="panel-accion"></div></div>
         <div class="panel"><h3>Análisis fundamental</h3><div id="panel-fundamental"></div></div>
         <div class="panel"><h3>Indicadores técnicos</h3><div id="panel-tecnico"></div></div>
       </div>
       <div class="periodos" id="periodos"></div>
-      <div id="chart-velas"></div>
-      <div id="chart-rsi"></div>
-      <div id="chart-macd"></div>
+      <div class="chart-block">
+        <div class="chart-head">
+          <h3 class="chart-title">Precio (velas) y medias móviles</h3>
+          <div class="chart-legend">
+            <span class="leg"><span class="sw sw-sma20"></span>SMA 20</span>
+            <span class="leg"><span class="sw sw-sma50"></span>SMA 50</span>
+          </div>
+        </div>
+        <div id="chart-velas"></div>
+      </div>
+      <div class="chart-block">
+        <h3 class="chart-title">RSI (14)</h3>
+        <div id="chart-rsi"></div>
+      </div>
+      <div class="chart-block">
+        <div class="chart-head">
+          <h3 class="chart-title">MACD (12, 26, 9)</h3>
+          <div class="chart-legend">
+            <span class="leg"><span class="sw sw-macd"></span>MACD</span>
+            <span class="leg"><span class="sw sw-signal"></span>Señal</span>
+          </div>
+        </div>
+        <div id="chart-macd"></div>
+      </div>
       <div id="detalle-historial"></div>
     </section>
   </main>
@@ -234,6 +270,16 @@
     }
     function getCssVar(nombre) {
       return getComputedStyle(document.documentElement).getPropertyValue(nombre).trim();
+    }
+    function fmtFechaArg(iso) {
+      // El backend guarda UTC (...Z); se muestra en horario de Argentina, descriptivo.
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      const tz = { timeZone: 'America/Argentina/Buenos_Aires' };
+      const fecha = d.toLocaleDateString('es-AR', { ...tz, day: 'numeric', month: 'long', year: 'numeric' });
+      const hora = d.toLocaleTimeString('es-AR', { ...tz, hour: '2-digit', minute: '2-digit', hour12: false });
+      return `${fecha} a las ${hora}`;
     }
 
     // --- fetch helpers (todos manejan loading/error en quien los llama) ---
@@ -432,7 +478,7 @@
       const tabla = document.getElementById('tabla-mercado');
       if (!tabla) return;
       document.getElementById('m-actualizado').textContent =
-        state.mercadoActualizado ? `Última actualización: ${state.mercadoActualizado}` : '';
+        state.mercadoActualizado ? `Última actualización: ${fmtFechaArg(state.mercadoActualizado)}` : '';
 
       const filas = filasMercadoVisibles();
       const thead = document.createElement('thead');
@@ -528,16 +574,32 @@
 
     async function analizarTecnico(ticker) {
       const activo = state.activos.find((a) => a.ticker === ticker);
-      if (!activo) return;
       state.loading = true; state.error = null; render();
       try {
-        await api(`/activos/${activo.id}/analisis/tecnico`, { method: 'POST' });
-        await cargarActivos();
-        await abrirDetalle(ticker, state.detallePeriodo);
+        if (activo) {
+          // En cartera: persiste el análisis y refresca historial y badges.
+          await api(`/activos/${activo.id}/analisis/tecnico`, { method: 'POST' });
+          await cargarActivos();
+          await abrirDetalle(ticker, state.detallePeriodo);
+        } else {
+          // Fuera de cartera: computa al vuelo, sin guardar.
+          const t = encodeURIComponent(ticker);
+          state.detalleAnalisisTecnico = await api(`/mercado/${t}/tecnico`);
+          state.loading = false; render();
+        }
       } catch (e) {
         state.error = `No se pudo analizar ${ticker}: ${e.message}`;
         state.loading = false; render();
       }
+    }
+
+    async function toggleCarteraDetalle() {
+      const ticker = state.detalleTicker;
+      const enCartera = !!state.activos.find((a) => a.ticker === ticker);
+      const fila = state.mercado.find((c) => c.ticker_byma === ticker);
+      const fund = state.detalle && state.detalle.fundamentales;
+      const nombre = (fila && fila.nombre) || (fund && fund.nombre) || ticker;
+      await toggleCartera({ ticker_byma: ticker, nombre }, !enCartera);
     }
 
     function volverDashboard() {
@@ -610,27 +672,26 @@
       tec.innerHTML = '';
       const enCartera = !!state.activos.find((a) => a.ticker === state.detalleTicker);
       const an = state.detalleAnalisisTecnico;
-      if (!enCartera) {
-        const p = document.createElement('p'); p.className = 'vacio';
-        p.textContent = 'Agregalo a la cartera (checkbox) para analizar.';
-        tec.appendChild(p);
+      if (an) {
+        tec.appendChild(filaSenal('Señal', an.senal));
+        tec.appendChild(filaMetrica('Score', an.score != null ? `${Math.round(an.score)}/100` : '—'));
+        tec.appendChild(filaMetrica('Confianza', an.confianza != null ? `${Math.round(an.confianza * 100)}%` : '—'));
+        const res = document.createElement('div'); res.className = 'resumen'; res.textContent = an.resumen;
+        tec.appendChild(res);
       } else {
-        if (an) {
-          tec.appendChild(filaSenal('Senal', an.senal));
-          tec.appendChild(filaMetrica('Score', an.score != null ? `${Math.round(an.score)}/100` : '—'));
-          tec.appendChild(filaMetrica('Confianza', an.confianza != null ? `${Math.round(an.confianza * 100)}%` : '—'));
-          const res = document.createElement('div'); res.className = 'resumen'; res.textContent = an.resumen;
-          tec.appendChild(res);
-        } else {
-          const p = document.createElement('p'); p.className = 'vacio';
-          p.textContent = 'Sin analisis tecnico todavia.';
-          tec.appendChild(p);
-        }
-        const btn = document.createElement('button');
-        btn.textContent = state.loading ? 'Analizando…' : 'Analizar';
-        btn.disabled = state.loading;
-        btn.addEventListener('click', () => analizarTecnico(state.detalleTicker));
-        tec.appendChild(btn);
+        const p = document.createElement('p'); p.className = 'vacio';
+        p.textContent = 'Sin análisis técnico todavía. Tocá Analizar.';
+        tec.appendChild(p);
+      }
+      const btn = document.createElement('button');
+      btn.textContent = state.loading ? 'Analizando…' : 'Analizar';
+      btn.disabled = state.loading;
+      btn.addEventListener('click', () => analizarTecnico(state.detalleTicker));
+      tec.appendChild(btn);
+      if (!enCartera) {
+        const nota = document.createElement('p'); nota.className = 'vacio'; nota.style.marginTop = 'var(--space-sm)';
+        nota.textContent = 'No está en tu cartera: el análisis se muestra pero no se guarda en el historial.';
+        tec.appendChild(nota);
       }
     }
 
@@ -669,7 +730,7 @@
           const l1 = document.createElement('div'); l1.className = 'linea1';
           const pill = document.createElement('span'); pill.className = `pill ${claseSenal(a.senal)}`; pill.textContent = a.senal;
           const meta = document.createElement('span'); meta.textContent = `${a.tipo} · ${Math.round((a.confianza || 0) * 100)}%`;
-          const fecha = document.createElement('span'); fecha.className = 'fecha'; fecha.textContent = a.created_at;
+          const fecha = document.createElement('span'); fecha.className = 'fecha'; fecha.textContent = fmtFechaArg(a.created_at);
           l1.append(pill, meta, fecha);
           const res = document.createElement('div'); res.className = 'resumen'; res.textContent = a.resumen;
           item.append(l1, res); cont.appendChild(item);
@@ -682,6 +743,12 @@
 
     function renderDetalle() {
       document.getElementById('detalle-titulo').textContent = state.detalleTicker || '';
+      const btnCart = document.getElementById('btn-cartera-detalle');
+      const enCartera = !!state.activos.find((a) => a.ticker === state.detalleTicker);
+      btnCart.textContent = enCartera ? 'Quitar de cartera' : '+ Agregar a cartera';
+      btnCart.className = enCartera ? 'btn-quitar' : '';
+      btnCart.disabled = state.loading;
+      btnCart.onclick = toggleCarteraDetalle;
       renderPaneles();
       renderPeriodos();
       renderHistorialDetalle();
