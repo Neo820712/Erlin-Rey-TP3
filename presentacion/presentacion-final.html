@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Defensa final TP3 — Dashboard de Análisis de Activos Financieros</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --intel-blue: #0068B5;
+      --intel-deep-blue: #002D62;
+      --intel-cyan: #00C7FD;
+      --intel-light-gray: #f3f4f6;
+      --intel-border-gray: #d1d5db;
+      --intel-dark: #000814;
+
+      --bg-primary: #ffffff;
+      --bg-secondary: #f7f9fa;
+      --card-bg: #ffffff;
+      --card-border: #e5e7eb;
+      --text-main: #000814;
+      --text-muted: #4b5563;
+
+      --node-bg: #ffffff;
+      --node-border: #cbd5e1;
+      --edge-idle: #cbd5e1;
+
+      --sig-buy: #15803d;
+      --sig-sell: #b91c1c;
+      --sig-hold: #b45309;
+
+      --font-family: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --transition-speed: 0.3s;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-secondary);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* HEADER */
+    .intel-header {
+      background-color: #ffffff;
+      border-bottom: 1px solid var(--intel-border-gray);
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+    .intel-logo-container { display: flex; align-items: center; gap: 1.5rem; }
+    .intel-logo {
+      font-family: var(--font-family);
+      font-weight: 800;
+      font-size: 1.5rem;
+      color: var(--intel-blue);
+      letter-spacing: -1px;
+      display: flex;
+      align-items: center;
+    }
+    .intel-logo span { font-weight: 300; font-size: 1rem; margin-left: 0.15rem; color: var(--text-muted); }
+    .intel-nav { display: flex; gap: 2rem; list-style: none; font-size: 0.9rem; font-weight: 500; color: var(--text-main); }
+    .intel-nav li { position: relative; padding: 0.5rem 0; }
+    .intel-nav li.active { color: var(--intel-blue); }
+    .intel-nav li.active::after {
+      content: ''; position: absolute; bottom: -8px; left: 0; width: 100%; height: 3px; background-color: var(--intel-blue);
+    }
+    .intel-header-right { font-size: 0.82rem; color: var(--text-muted); }
+
+    /* SLIDES */
+    .slides-container {
+      position: relative;
+      flex-grow: 1;
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .slide {
+      position: absolute;
+      width: 100%;
+      opacity: 0;
+      transform: translateX(30px);
+      pointer-events: none;
+      transition: all var(--transition-speed) ease-in-out;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+    .slide.active { opacity: 1; transform: translateX(0); pointer-events: auto; position: relative; }
+
+    .slide-header { margin-bottom: 0.1rem; }
+    .slide-tag {
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--intel-blue); font-weight: 700; margin-bottom: 0.2rem;
+    }
+    .slide-title { font-size: 2rem; font-weight: 700; color: var(--intel-deep-blue); line-height: 1.15; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.2rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+    /* CARDS */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-top: 4px solid var(--intel-blue);
+      border-radius: 4px;
+      padding: 1.1rem 1.2rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .card-title {
+      font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--intel-deep-blue);
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    }
+    .badge {
+      font-family: var(--font-family); font-size: 0.62rem; padding: 2px 8px; border-radius: 2px;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+    }
+    .badge-accent { background: rgba(0, 104, 181, 0.1); color: var(--intel-blue); }
+    .badge-cyan { background: rgba(0, 199, 253, 0.12); color: #008fa8; }
+    .badge-dark { background: var(--intel-deep-blue); color: #fff; }
+    .card p { color: var(--text-muted); font-size: 0.88rem; line-height: 1.45; }
+
+    /* HERO / PORTADA */
+    .hero-slide {
+      background: linear-gradient(135deg, var(--intel-deep-blue) 0%, #001229 100%);
+      border-radius: 8px;
+      padding: 3.5rem 3.5rem;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 104, 181, 0.15);
+      border-left: 8px solid var(--intel-cyan);
+      width: 100%;
+      display: flex; align-items: center; justify-content: space-between; gap: 2rem;
+    }
+    .hero-slide::after {
+      content: ''; position: absolute; right: -10%; top: -20%; width: 420px; height: 420px;
+      border-radius: 50%; background: radial-gradient(circle, rgba(0, 199, 253, 0.12) 0%, transparent 70%); pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-block; background: var(--intel-blue); color: #fff; font-weight: 700;
+      text-transform: uppercase; font-size: 0.72rem; letter-spacing: 1.5px; padding: 0.3rem 1rem; border-radius: 2px; margin-bottom: 1.25rem;
+    }
+    .hero-title { font-size: 2.9rem; font-weight: 700; line-height: 1.12; margin-bottom: 1.1rem; color: #fff; }
+    .hero-title span { color: var(--intel-cyan); }
+    .hero-subtitle { font-size: 1.1rem; color: #e5e7eb; max-width: 760px; line-height: 1.55; font-weight: 300; }
+    .hero-meta {
+      display: flex; gap: 2.5rem; font-size: 0.82rem; color: #9ca3af;
+      border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 1.25rem; margin-top: 2rem; flex-wrap: wrap;
+    }
+    .hero-meta strong { color: #fff; }
+    .hero-photo {
+      flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    }
+    .hero-photo img {
+      width: 130px; height: 130px; border-radius: 50%; border: 4px solid var(--intel-cyan);
+      object-fit: cover; box-shadow: 0 0 25px rgba(0, 199, 253, 0.45);
+    }
+    .hero-photo span {
+      font-size: 0.72rem; color: var(--intel-cyan); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+    }
+
+    /* ARQUITECTURA (slide interactiva) */
+    .arch-layout { display: grid; grid-template-columns: 1.55fr 1fr; gap: 1.25rem; align-items: stretch; }
+    .arch-svg-wrap {
+      background: #fff; border: 1px solid var(--card-border); border-radius: 6px; padding: 0.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column;
+    }
+    .arch-svg-wrap svg { width: 100%; height: auto; display: block; }
+    .arch-caption {
+      font-size: 0.72rem; color: var(--text-muted); text-align: center; padding: 0.35rem 0.5rem 0.1rem; line-height: 1.35;
+    }
+    .arch-caption strong { color: var(--intel-deep-blue); }
+
+    .node rect {
+      fill: var(--node-bg); stroke: var(--node-border); stroke-width: 1.5;
+      transition: stroke 0.25s ease, stroke-width 0.25s ease, fill 0.25s ease;
+    }
+    .node .n-title { font-family: var(--font-family); font-weight: 700; font-size: 15px; fill: var(--intel-deep-blue); }
+    .node .n-sub { font-family: var(--font-mono); font-size: 11px; fill: var(--text-muted); }
+    .node.on rect { stroke: var(--intel-blue); stroke-width: 3; fill: #f2f9ff; }
+    .node.on .n-title { fill: var(--intel-blue); }
+
+    .edge {
+      fill: none; stroke: var(--edge-idle); stroke-width: 2; opacity: 0.55;
+      transition: stroke 0.25s ease, stroke-width 0.25s ease, opacity 0.25s ease;
+    }
+    .edge.on { stroke: var(--intel-blue); stroke-width: 3.2; opacity: 1; }
+    #api-note { opacity: 0; transition: opacity 0.25s ease; }
+    #api-note.on { opacity: 1; }
+    #api-note rect { fill: var(--intel-deep-blue); }
+    #api-note text { fill: #fff; font-family: var(--font-mono); font-size: 11px; }
+    .edge-label { font-family: var(--font-mono); font-size: 10px; fill: var(--text-muted); opacity: 0; transition: opacity 0.25s ease; }
+    .edge-label.on { opacity: 1; fill: var(--intel-blue); }
+
+    /* Panel del controlador de pasos */
+    .arch-panel { display: flex; flex-direction: column; gap: 0.75rem; }
+    .step-card {
+      background: #fff; border: 1px solid var(--card-border); border-top: 4px solid var(--intel-cyan);
+      border-radius: 6px; padding: 1.1rem 1.2rem; flex-grow: 1; display: flex; flex-direction: column; gap: 0.7rem;
+    }
+    .step-title { font-size: 1.15rem; font-weight: 700; color: var(--intel-deep-blue); line-height: 1.2; }
+    .step-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
+    .step-chip-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 1px; color: var(--intel-blue); font-weight: 700; }
+    .step-chip {
+      font-family: var(--font-mono); font-size: 0.8rem; color: var(--intel-deep-blue);
+      background: var(--intel-light-gray); border: 1px solid var(--intel-border-gray);
+      border-left: 3px solid var(--intel-blue); border-radius: 3px; padding: 0.55rem 0.7rem; word-break: break-word; line-height: 1.4;
+    }
+    .step-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+    .step-counter { font-weight: 700; font-size: 0.82rem; color: var(--intel-deep-blue); }
+    .step-dots { display: flex; gap: 5px; }
+    .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--intel-border-gray); transition: background 0.2s ease; }
+    .step-dot.on { background: var(--intel-blue); }
+
+    /* SUPERPOWERS FLOW */
+    .flow-wrap { background: #fff; border: 1px solid var(--card-border); border-radius: 6px; padding: 1rem 1rem 0.6rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .flow-wrap svg { width: 100%; height: auto; display: block; }
+    .stage rect { fill: #fff; stroke: var(--node-border); stroke-width: 1.5; }
+    .stage .s-num { fill: var(--intel-blue); font-family: var(--font-mono); font-weight: 700; font-size: 13px; }
+    .stage .s-title { fill: var(--intel-deep-blue); font-family: var(--font-family); font-weight: 700; font-size: 15px; }
+    .stage .s-sub { fill: var(--text-muted); font-family: var(--font-mono); font-size: 10.5px; }
+    .flow-edge { stroke: var(--intel-blue); stroke-width: 2.2; fill: none; }
+    .flow-caption { font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-top: 0.4rem; }
+    .flow-caption strong { color: var(--intel-deep-blue); }
+
+    /* CLAUDE CODE CONFIG */
+    .level-pill {
+      font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .lvl-context { background: rgba(0, 199, 253, 0.14); color: #008fa8; }
+    .lvl-harness { background: rgba(0, 104, 181, 0.12); color: var(--intel-blue); }
+    .lvl-prompt { background: rgba(0, 45, 98, 0.1); color: var(--intel-deep-blue); }
+    .cfg-card { display: flex; flex-direction: column; gap: 0.5rem; }
+    .cfg-file { font-family: var(--font-mono); font-size: 0.92rem; font-weight: 700; color: var(--intel-deep-blue); }
+    .cfg-role { font-size: 0.84rem; color: var(--text-muted); line-height: 1.45; }
+    .cfg-caption { font-size: 0.82rem; color: var(--text-muted); text-align: center; }
+    .cfg-caption code { font-family: var(--font-mono); color: var(--intel-deep-blue); }
+
+    /* RECURSOS TECNICOS (file grid) */
+    .file-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; }
+    .file-card {
+      background: #fff; border: 1px solid var(--card-border); border-radius: 6px; overflow: hidden;
+      display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .file-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+      padding: 0.55rem 0.75rem; background: var(--intel-deep-blue); border-bottom: 1px solid #001229;
+    }
+    .file-name { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: #fff; }
+    .file-role { font-size: 0.7rem; color: var(--intel-cyan); font-weight: 600; }
+    .file-snip {
+      font-family: var(--font-mono); font-size: 0.66rem; line-height: 1.45; color: #1f2937;
+      background: var(--intel-light-gray); padding: 0.6rem 0.75rem; margin: 0; white-space: pre; overflow: hidden; flex-grow: 1;
+    }
+    .file-snip .fm { color: var(--intel-blue); }
+    .file-snip .cm { color: #6b7280; }
+    .file-snip .kw { color: #b91c1c; }
+
+    /* DEMO */
+    .demo-hero {
+      width: 100%; min-height: 60vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 1.5rem;
+      background: linear-gradient(135deg, var(--intel-deep-blue) 0%, #001229 100%);
+      border-radius: 10px; border-left: 8px solid var(--intel-cyan); color: #fff;
+      box-shadow: 0 10px 30px rgba(0, 104, 181, 0.18); position: relative; overflow: hidden;
+    }
+    .demo-hero::after {
+      content: ''; position: absolute; left: 50%; top: -30%; transform: translateX(-50%);
+      width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,199,253,0.14) 0%, transparent 70%); pointer-events: none;
+    }
+    .demo-word {
+      font-size: 7rem; font-weight: 800; letter-spacing: 0.15em; color: #fff; line-height: 1; text-indent: 0.15em;
+    }
+    .demo-word span { color: var(--intel-cyan); }
+    .demo-sub { font-family: var(--font-mono); font-size: 1rem; color: #cbd5e1; }
+    .demo-sub b { color: var(--intel-cyan); font-weight: 700; }
+
+    /* CIERRE */
+    .checklist { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem 1.5rem; }
+    .checklist li { position: relative; padding-left: 1.7rem; font-size: 0.92rem; color: var(--text-muted); line-height: 1.4; }
+    .checklist li::before {
+      content: '✓'; position: absolute; left: 0; top: -1px; color: #fff; background: var(--sig-buy);
+      width: 1.15rem; height: 1.15rem; border-radius: 3px; font-size: 0.72rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .checklist li strong { color: var(--intel-deep-blue); }
+    .repo-link {
+      display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: 0.92rem;
+      color: var(--intel-blue); text-decoration: none; font-weight: 700;
+      border: 1px solid var(--intel-border-gray); border-radius: 4px; padding: 0.5rem 0.9rem; background: #fff;
+    }
+
+    /* FOOTER NAV */
+    .intel-footer {
+      background-color: #fff; border-top: 1px solid var(--intel-border-gray);
+      padding: 0.9rem 2rem; display: flex; align-items: center; justify-content: space-between; z-index: 100; flex-shrink: 0;
+    }
+    .nav-controls { display: flex; align-items: center; gap: 0.7rem; }
+    .btn-intel {
+      background-color: var(--intel-blue); border: 1px solid var(--intel-blue); color: #fff;
+      padding: 0.5rem 1.2rem; border-radius: 2px; cursor: pointer; font-family: var(--font-family);
+      font-weight: 700; font-size: 0.82rem; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.5rem;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .btn-intel:hover { background-color: var(--intel-deep-blue); border-color: var(--intel-deep-blue); }
+    .btn-intel-outline { background-color: transparent; border: 1px solid var(--intel-border-gray); color: var(--intel-deep-blue); }
+    .btn-intel-outline:hover { background-color: var(--bg-secondary); border-color: var(--intel-blue); color: var(--intel-blue); }
+    .btn-intel:disabled, .btn-intel-outline:disabled { opacity: 0.3; cursor: not-allowed; border-color: var(--intel-border-gray); background: transparent; color: var(--text-muted); }
+    .btn-sm { padding: 0.4rem 0.85rem; font-size: 0.75rem; }
+
+    .progress-container { flex-grow: 1; margin: 0 3rem; display: flex; align-items: center; gap: 1.25rem; }
+    .progress-bar-wrapper { height: 3px; background: var(--intel-light-gray); flex-grow: 1; }
+    .progress-bar { height: 100%; width: 0%; background: var(--intel-blue); transition: width 0.3s ease; }
+    .slide-counter { font-weight: 700; font-size: 0.8rem; color: var(--intel-deep-blue); min-width: 64px; }
+    .keyboard-hint { font-size: 0.78rem; color: var(--text-muted); display: flex; gap: 0.4rem; align-items: center; }
+    .key-cap {
+      background: #f3f4f6; border: 1px solid var(--intel-border-gray); border-radius: 2px; padding: 1px 5px;
+      font-family: var(--font-mono); font-size: 0.7rem; color: var(--intel-deep-blue); box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="intel-header">
+    <div class="intel-logo-container">
+      <div class="intel-logo">ceia<span>UBA</span></div>
+      <ul class="intel-nav">
+        <li id="nav-prop">Propuesta</li>
+        <li class="active" id="nav-def">Defensa final TP3</li>
+      </ul>
+    </div>
+    <div class="intel-header-right">Introducción al Desarrollo de Software Asistido por IA</div>
+  </header>
+
+  <div class="slides-container">
+
+    <!-- SLIDE 1: PORTADA -->
+    <div class="slide active" id="slide-1">
+      <div class="hero-slide">
+        <div style="flex:1;">
+          <div class="hero-badge">TP3 — Defensa final</div>
+          <h1 class="hero-title">Dashboard de Análisis de <span>Activos Financieros</span></h1>
+          <p class="hero-subtitle">API REST + dashboard web que expone una versión reducida del sistema de análisis de activos de la tesis de grado: monitoreo de CEDEARs, señales de análisis técnico real (RSI / MACD / SMA) y un slash command propio que dispara los análisis desde Claude Code.</p>
+          <div class="hero-meta">
+            <div>Materia: <strong>Introducción al Desarrollo de Software Asistido por IA (CEIA — UBA)</strong></div>
+            <div>Stack: <strong>FastAPI + SQLModel + SQLite</strong></div>
+            <div>Autor: <strong>Erlin Rey</strong></div>
+          </div>
+        </div>
+        <div class="hero-photo">
+          <img src="../propuesta/fotoerlin.jpg" alt="Erlin Rey" onerror="this.parentNode.style.display='none'">
+          <span>Expositor</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: ARQUITECTURA (interactiva) -->
+    <div class="slide" id="slide-2">
+      <div class="slide-header">
+        <div class="slide-tag">Arquitectura e interacción entre componentes</div>
+        <h2 class="slide-title">Un request de punta a punta: generar una señal técnica</h2>
+      </div>
+      <div class="arch-layout">
+        <div class="arch-svg-wrap">
+          <svg viewBox="0 0 1000 340" role="img" aria-label="Diagrama de componentes">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"></path>
+              </marker>
+            </defs>
+
+            <!-- EDGES -->
+            <path id="e-c1" class="edge" marker-end="url(#arrow)" d="M204,72 C284,92 304,140 360,150"></path>
+            <path id="e-c2" class="edge" marker-end="url(#arrow)" d="M204,232 C284,214 304,182 360,176"></path>
+            <path id="e-api-scripts" class="edge" marker-end="url(#arrow)" d="M550,150 C622,110 652,96 700,92"></path>
+            <path id="e-scripts-db" class="edge" marker-end="url(#arrow)" d="M822,140 C818,170 814,182 810,210"></path>
+            <text class="edge-label" id="lbl-read" x="828" y="180">lee</text>
+            <path id="e-api-db" class="edge" marker-end="url(#arrow)" d="M456,216 C486,272 566,256 660,252"></path>
+            <path id="e-api-client" class="edge" marker-end="url(#arrow)" d="M360,150 C300,120 290,90 204,80"></path>
+
+            <!-- NODES -->
+            <g class="node" id="n-frontend">
+              <rect x="24" y="40" width="180" height="64" rx="6"></rect>
+              <text class="n-title" x="114" y="68" text-anchor="middle">Frontend</text>
+              <text class="n-sub" x="114" y="88" text-anchor="middle">:3000 · vanilla</text>
+            </g>
+            <g class="node" id="n-skill">
+              <rect x="24" y="200" width="180" height="64" rx="6"></rect>
+              <text class="n-title" x="114" y="228" text-anchor="middle">/tecnico</text>
+              <text class="n-sub" x="114" y="248" text-anchor="middle">Claude Code</text>
+            </g>
+            <g class="node" id="n-api">
+              <rect x="360" y="120" width="192" height="96" rx="6"></rect>
+              <text class="n-title" x="456" y="150" text-anchor="middle">API FastAPI</text>
+              <text class="n-sub" x="456" y="170" text-anchor="middle">:8000</text>
+              <text class="n-sub" x="456" y="188" text-anchor="middle">solo CRUD</text>
+            </g>
+            <g class="node" id="n-scripts">
+              <rect x="700" y="30" width="252" height="112" rx="6"></rect>
+              <text class="n-title" x="826" y="60" text-anchor="middle">scripts/</text>
+              <text class="n-sub" x="826" y="84" text-anchor="middle">score_tecnico.py</text>
+              <text class="n-sub" x="826" y="104" text-anchor="middle">indicators.py · prices.py</text>
+              <text class="n-sub" x="826" y="124" text-anchor="middle">yfinance · pandas</text>
+            </g>
+            <g class="node" id="n-db">
+              <rect x="660" y="210" width="272" height="92" rx="6"></rect>
+              <text class="n-title" x="796" y="240" text-anchor="middle">SQLite</text>
+              <text class="n-sub" x="796" y="262" text-anchor="middle">data/activos.db</text>
+              <text class="n-sub" x="796" y="282" text-anchor="middle">tabla precios (OHLC)</text>
+            </g>
+
+            <!-- nota contrato -->
+            <g id="api-note">
+              <rect x="372" y="92" width="120" height="20" rx="3"></rect>
+              <text x="432" y="106" text-anchor="middle">openapi.yaml</text>
+            </g>
+          </svg>
+          <div class="arch-caption">
+            <strong>Decisión de arquitectura:</strong> el backend es <strong>solo CRUD</strong>. yfinance y el cálculo de indicadores viven en <strong>scripts/</strong>; los precios se leen de la tabla <code>precios</code>, nunca de red.
+          </div>
+        </div>
+
+        <div class="arch-panel">
+          <div class="step-card">
+            <div>
+              <div class="step-chip-label">Paso activo</div>
+              <div class="step-title" id="step-title">1 · El cliente dispara el análisis</div>
+            </div>
+            <div class="step-desc" id="step-desc"></div>
+            <div>
+              <div class="step-chip-label">Qué viaja</div>
+              <div class="step-chip" id="step-chip"></div>
+            </div>
+            <div style="flex-grow:1;"></div>
+            <div class="step-controls">
+              <button class="btn-intel btn-intel-outline btn-sm" id="arch-prev">◀ Anterior</button>
+              <div style="text-align:center;">
+                <div class="step-counter" id="step-counter">Paso 1 / 6</div>
+                <div class="step-dots" id="step-dots"></div>
+              </div>
+              <button class="btn-intel btn-sm" id="arch-next">Siguiente ▶</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: FLUJO SUPERPOWERS -->
+    <div class="slide" id="slide-3">
+      <div class="slide-header">
+        <div class="slide-tag">Proceso de desarrollo · Superpowers</div>
+        <h2 class="slide-title">De la idea al merge: un pipeline con artefactos versionados</h2>
+      </div>
+      <div class="flow-wrap">
+        <svg viewBox="0 0 1080 150" role="img" aria-label="Flujo Superpowers">
+          <defs>
+            <marker id="farrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--intel-blue)"></path>
+            </marker>
+          </defs>
+          <line class="flow-edge" marker-end="url(#farrow)" x1="168" y1="76" x2="186" y2="76"></line>
+          <line class="flow-edge" marker-end="url(#farrow)" x1="348" y1="76" x2="366" y2="76"></line>
+          <line class="flow-edge" marker-end="url(#farrow)" x1="528" y1="76" x2="546" y2="76"></line>
+          <line class="flow-edge" marker-end="url(#farrow)" x1="708" y1="76" x2="726" y2="76"></line>
+          <line class="flow-edge" marker-end="url(#farrow)" x1="888" y1="76" x2="906" y2="76"></line>
+
+          <g class="stage">
+            <rect x="8" y="32" width="160" height="88" rx="6"></rect>
+            <text class="s-num" x="22" y="54">01</text>
+            <text class="s-title" x="22" y="78">Brainstorm</text>
+            <text class="s-sub" x="22" y="98">superpowers:</text>
+            <text class="s-sub" x="22" y="112">brainstorming</text>
+          </g>
+          <g class="stage">
+            <rect x="188" y="32" width="160" height="88" rx="6"></rect>
+            <text class="s-num" x="202" y="54">02</text>
+            <text class="s-title" x="202" y="78">Spec</text>
+            <text class="s-sub" x="202" y="98">specs/…</text>
+            <text class="s-sub" x="202" y="112">-design.md</text>
+          </g>
+          <g class="stage">
+            <rect x="368" y="32" width="160" height="88" rx="6"></rect>
+            <text class="s-num" x="382" y="54">03</text>
+            <text class="s-title" x="382" y="78">Plan</text>
+            <text class="s-sub" x="382" y="98">plans/…</text>
+            <text class="s-sub" x="382" y="112">task-by-task</text>
+          </g>
+          <g class="stage">
+            <rect x="548" y="32" width="160" height="88" rx="6"></rect>
+            <text class="s-num" x="562" y="54">04</text>
+            <text class="s-title" x="562" y="78">Execute</text>
+            <text class="s-sub" x="562" y="98">TDD +</text>
+            <text class="s-sub" x="562" y="112">subagents</text>
+          </g>
+          <g class="stage">
+            <rect x="728" y="32" width="160" height="88" rx="6"></rect>
+            <text class="s-num" x="742" y="54">05</text>
+            <text class="s-title" x="742" y="78">Verify</text>
+            <text class="s-sub" x="742" y="98">uv run pytest</text>
+            <text class="s-sub" x="742" y="112">en verde</text>
+          </g>
+          <g class="stage">
+            <rect x="908" y="32" width="160" height="88" rx="6"></rect>
+            <text class="s-num" x="922" y="54">06</text>
+            <text class="s-title" x="922" y="78">PR</text>
+            <text class="s-sub" x="922" y="98">GitHub Flow</text>
+            <text class="s-sub" x="922" y="112">→ main</text>
+          </g>
+        </svg>
+        <div class="flow-caption">Cada etapa deja un artefacto versionado en <strong>docs/superpowers/</strong> (specs y plans con fecha). La integración a <strong>main</strong> es siempre vía <strong>Pull Request</strong>; nunca se commitea directo.</div>
+      </div>
+      <div class="grid-3">
+        <div class="card" style="border-top-color: var(--intel-cyan);">
+          <div class="card-title">Spec antes que código <span class="badge badge-cyan">Diseño</span></div>
+          <p>El brainstorming se cristaliza en una <code>spec</code> de diseño que fija alcance, decisiones y sus razones — p. ej. <em>score-tecnico-cartera-on-demand-design.md</em>. Donde la spec y la propuesta difieren, manda la spec.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Plan con TDD <span class="badge badge-accent">Ejecución</span></div>
+          <p>El plan baja la spec a tareas con checkboxes y tests primero (<em>rojo → verde</em>). Un plan real: <em>backend-api.md</em>, los 7 endpoints construidos endpoint por endpoint con su test.</p>
+        </div>
+        <div class="card" style="border-top-color: var(--intel-deep-blue);">
+          <div class="card-title">Verify + PR <span class="badge badge-dark">Cierre</span></div>
+          <p>Nada se da por hecho sin evidencia: <code>uv run pytest</code> en verde antes de cerrar. El branch <code>feature/…</code> se integra a <code>main</code> por PR (GitHub Flow).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: CONFIGURACIONES CLAUDE CODE -->
+    <div class="slide" id="slide-4">
+      <div class="slide-header">
+        <div class="slide-tag">Configuraciones de Claude Code</div>
+        <h2 class="slide-title">Qué gobierna al agente, y en qué nivel</h2>
+      </div>
+      <div class="grid-4">
+        <div class="card cfg-card" style="border-top-color: var(--intel-cyan);">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span class="cfg-file">CLAUDE.md</span>
+            <span class="level-pill lvl-context">Context</span>
+          </div>
+          <div class="cfg-role">Contexto jerárquico cargado por sesión: stack, estructura del repo y las reglas de arquitectura invariantes.</div>
+        </div>
+        <div class="card cfg-card" style="border-top-color: var(--intel-cyan);">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span class="cfg-file">.claude/rules/</span>
+            <span class="level-pill lvl-context">Context</span>
+          </div>
+          <div class="cfg-role">Reglas inyectadas por <code>glob</code>: <code>backend.md</code> al tocar <code>backend/**</code>, <code>frontend.md</code> en <code>frontend/**</code>. El contexto correcto, solo cuando aplica.</div>
+        </div>
+        <div class="card cfg-card">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span class="cfg-file">settings.json</span>
+            <span class="level-pill lvl-harness">Harness</span>
+          </div>
+          <div class="cfg-role"><code>allow</code> / <code>deny</code> / <code>env</code>: límite determinístico del runtime. Habilita pytest/uvicorn, bloquea <code>rm -rf</code> y <code>push --force</code>, fija <code>PYTHONPATH</code>.</div>
+        </div>
+        <div class="card cfg-card">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span class="cfg-file">skill /tecnico</span>
+            <span class="level-pill lvl-harness">Harness</span>
+          </div>
+          <div class="cfg-role">Slash command propio que materializa el ciclo <strong>ReAct</strong> (think → act → observe) y delega el cálculo a <code>scripts/score_tecnico.py</code>.</div>
+        </div>
+      </div>
+      <div class="grid-2" style="align-items:stretch;">
+        <div class="card" style="border-top-color: var(--intel-deep-blue);">
+          <div class="card-title">El límite determinístico vive fuera del prompt <span class="badge badge-dark">settings.json</span></div>
+          <pre class="file-snip" style="background:#0c0c0c; color:#e5e7eb; font-size:0.72rem;"><span style="color:#60a5fa;">"allow"</span>: [ <span style="color:#34d399;">"Bash(uv run pytest *)"</span>,
+           <span style="color:#34d399;">"Bash(uvicorn backend.main:app *)"</span> ],
+<span style="color:#60a5fa;">"deny"</span>:  [ <span style="color:#f87171;">"Bash(rm -rf *)"</span>,
+           <span style="color:#f87171;">"Bash(git push --force*)"</span> ],
+<span style="color:#60a5fa;">"env"</span>:   { <span style="color:#34d399;">"CORS_ORIGINS"</span>: <span style="color:#fbbf24;">"http://localhost:3000"</span>,
+           <span style="color:#34d399;">"PYTHONPATH"</span>: <span style="color:#fbbf24;">"."</span> }</pre>
+        </div>
+        <div class="card" style="border-top-color: var(--intel-blue); display:flex; flex-direction:column; justify-content:center;">
+          <div class="card-title">Tres niveles de ingeniería del agente</div>
+          <p style="margin-bottom:0.5rem;"><span class="level-pill lvl-prompt">Prompt</span> &nbsp;diseño del input — registrado en <code>prompts.md</code>.</p>
+          <p style="margin-bottom:0.5rem;"><span class="level-pill lvl-context">Context</span> &nbsp;qué ve el modelo — <code>CLAUDE.md</code> + <code>rules/</code> por glob.</p>
+          <p><span class="level-pill lvl-harness">Harness</span> &nbsp;runtime: permisos, env y tools — <code>settings.json</code> + skill <code>/tecnico</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: RECURSOS TECNICOS -->
+    <div class="slide" id="slide-5">
+      <div class="slide-header">
+        <div class="slide-tag">Recursos técnicos del repositorio</div>
+        <h2 class="slide-title">Los archivos que definen el proyecto</h2>
+      </div>
+      <div class="file-grid">
+        <div class="file-card">
+          <div class="file-head"><span class="file-name">CLAUDE.md</span><span class="file-role">contexto + arquitectura</span></div>
+<pre class="file-snip"><span class="cm"># Reglas de arquitectura</span>
+- El backend es solo CRUD. Nada de
+  yfinance ni pandas en backend/;
+  todo lo que descarga precios o
+  calcula indicadores vive en scripts/.
+- openapi.yaml es la fuente de verdad.</pre>
+        </div>
+        <div class="file-card">
+          <div class="file-head"><span class="file-name">.claude/rules/backend.md</span><span class="file-role">regla por glob</span></div>
+<pre class="file-snip"><span class="fm">---</span>
+<span class="fm">paths: ["backend/**/*.py"]</span>
+<span class="fm">---</span>
+- El backend no toca el dominio
+  externo: no importa yfinance ni
+  pandas. El backend es solo CRUD.</pre>
+        </div>
+        <div class="file-card">
+          <div class="file-head"><span class="file-name">.claude/rules/frontend.md</span><span class="file-role">regla por glob</span></div>
+<pre class="file-snip"><span class="fm">---</span>
+<span class="fm">paths: ["frontend/**/*.{html,js,css}"]</span>
+<span class="fm">---</span>
+- Vanilla single-file: todo en
+  frontend/index.html. Sin frameworks,
+  sin build, sin node_modules.</pre>
+        </div>
+        <div class="file-card">
+          <div class="file-head"><span class="file-name">.claude/settings.json</span><span class="file-role">permisos del harness</span></div>
+<pre class="file-snip"><span class="kw">"allow"</span>: ["Bash(uv run pytest *)", …],
+<span class="kw">"deny"</span>:  ["Bash(rm -rf *)",
+          "Bash(git push --force*)"],
+<span class="kw">"env"</span>:   {"CORS_ORIGINS":
+            "http://localhost:3000",
+          "PYTHONPATH": "."}</pre>
+        </div>
+        <div class="file-card">
+          <div class="file-head"><span class="file-name">skills/tecnico/SKILL.md</span><span class="file-role">slash command ReAct</span></div>
+<pre class="file-snip"><span class="fm">---</span>
+<span class="fm">name: tecnico</span>
+<span class="fm">description: análisis técnico</span>
+<span class="fm">  (RSI/MACD/SMA, score 0-100)</span>
+<span class="fm">---</span>
+### Think → Act → Observe</pre>
+        </div>
+        <div class="file-card">
+          <div class="file-head"><span class="file-name">docs/superpowers/specs/…-design.md</span><span class="file-role">spec del flujo</span></div>
+<pre class="file-snip"><span class="cm"># Spec — Score técnico on-demand,</span>
+<span class="cm"># cartera por checkbox, precios</span>
+<span class="cm"># como fuente única</span>
+score = 0.40·RSI_s
+      + 0.30·Tendencia_s
+      + 0.30·MACD_s</pre>
+        </div>
+      </div>
+      <div class="card" style="border-top-color: var(--intel-deep-blue); padding:0.7rem 1.1rem;">
+        <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+          <span class="badge badge-dark">openapi.yaml</span>
+          <span style="font-size:0.86rem; color:var(--text-muted);"><strong style="color:var(--intel-deep-blue);">Contrato = fuente de verdad.</strong> Si cambia un endpoint (path, schema, status code) se edita el YAML <em>antes</em> que el código. Swagger se autogenera en <code style="font-family:var(--font-mono);">/docs</code> para verificar que la implementación matchea el contrato.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: DEMO -->
+    <div class="slide" id="slide-6">
+      <div class="demo-hero">
+        <div class="demo-word">DEM<span>O</span></div>
+        <div class="demo-sub">Dashboard en vivo — <b>start.bat</b> → <b>localhost:3000</b></div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: CIERRE -->
+    <div class="slide" id="slide-7">
+      <div class="slide-header">
+        <div class="slide-tag">Entregables cumplidos</div>
+        <h2 class="slide-title">Cierre</h2>
+      </div>
+      <div class="grid-2" style="align-items:start; gap:2rem;">
+        <ul class="checklist">
+          <li><strong>API REST</strong> FastAPI + SQLModel, contrato <code>openapi.yaml</code></li>
+          <li><strong>Persistencia</strong> SQLite con FK y borrado en cascada</li>
+          <li><strong>Frontend</strong> vanilla single-file servido en :3000</li>
+          <li><strong>Backend solo CRUD</strong>: cálculo aislado en <code>scripts/</code></li>
+          <li><strong>CLAUDE.md</strong> + <code>rules/</code> por glob + <code>settings.json</code></li>
+          <li><strong>Skill propia</strong> <code>/tecnico</code> (ciclo ReAct)</li>
+          <li><strong>Análisis técnico real</strong> RSI/MACD/SMA → score 0-100</li>
+          <li><strong>Tests</strong> pytest (API, indicadores, mercado, histórico)</li>
+          <li><strong>Flujo Superpowers</strong> specs + plans versionados</li>
+          <li><strong>GitHub Flow</strong>: ramas <code>feature/…</code> → <code>main</code> por PR</li>
+        </ul>
+        <div style="display:flex; flex-direction:column; gap:1.25rem;">
+          <div class="card" style="border-top-color: var(--intel-cyan);">
+            <div class="card-title">Repositorio</div>
+            <p style="margin-bottom:0.8rem;">Código, contrato, specs/plans y bitácora de prompts, todo versionado en GitHub.</p>
+            <a class="repo-link" href="https://github.com/Neo820712/Erlin-Rey-TP3" target="_blank" rel="noopener">github.com/Neo820712/Erlin-Rey-TP3</a>
+          </div>
+          <div class="hero-slide" style="padding:1.75rem 2rem; min-height:0;">
+            <div>
+              <h2 style="font-size:1.9rem; font-weight:700; color:#fff;">Gracias</h2>
+              <p style="color:var(--intel-cyan); font-family:var(--font-mono); font-size:0.95rem; margin-top:0.35rem;">Preguntas</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="intel-footer">
+    <div class="keyboard-hint">
+      Navegación: <span class="key-cap">←</span> / <span class="key-cap">→</span>
+      <span style="margin-left:0.4rem;">· en Arquitectura recorren los pasos de la simulación</span>
+    </div>
+    <div class="progress-container">
+      <div class="slide-counter" id="slide-indicator">1 / 7</div>
+      <div class="progress-bar-wrapper"><div class="progress-bar" id="progress-bar"></div></div>
+    </div>
+    <div class="nav-controls">
+      <button class="btn-intel btn-intel-outline" id="btn-prev" disabled>Anterior</button>
+      <button class="btn-intel" id="btn-next">Siguiente</button>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const slides = document.querySelectorAll('.slide');
+      const totalSlides = slides.length;
+      const ARCH_SLIDE = 1; // slide 2 (0-based)
+      let current = 0;
+
+      const btnPrev = document.getElementById('btn-prev');
+      const btnNext = document.getElementById('btn-next');
+      const indicator = document.getElementById('slide-indicator');
+      const progressBar = document.getElementById('progress-bar');
+
+      function updateSlides() {
+        slides.forEach((s, i) => s.classList.toggle('active', i === current));
+        progressBar.style.width = `${((current + 1) / totalSlides) * 100}%`;
+        indicator.textContent = `${current + 1} / ${totalSlides}`;
+        btnPrev.disabled = current === 0;
+        btnNext.disabled = current === totalSlides - 1;
+      }
+      function nextSlide() { if (current < totalSlides - 1) { current++; updateSlides(); } }
+      function prevSlide() { if (current > 0) { current--; updateSlides(); } }
+
+      btnNext.addEventListener('click', nextSlide);
+      btnPrev.addEventListener('click', prevSlide);
+
+      /* ---------- Simulación de arquitectura (controlador de pasos) ---------- */
+      const archSteps = [
+        {
+          title: '1 · El cliente dispara el análisis',
+          desc: 'El frontend (botón "Analizar") o la skill /tecnico piden un análisis técnico. Mismo endpoint, dos clientes.',
+          chip: 'POST /activos/{id}/analisis/tecnico',
+          nodes: ['n-frontend', 'n-skill', 'n-api'],
+          edges: ['e-c1', 'e-c2']
+        },
+        {
+          title: '2 · FastAPI valida contra el contrato',
+          desc: 'El backend valida que el activo existe (404 si no) y el contrato. No calcula nada: es solo CRUD.',
+          chip: 'CRUD · valida contra openapi.yaml',
+          nodes: ['n-api'],
+          edges: [],
+          note: true
+        },
+        {
+          title: '3 · Subprocess a scripts/ → lee precios',
+          desc: 'El backend lanza score_tecnico.py como subproceso, que lee OHLC de la tabla precios en SQLite. Sin red.',
+          chip: 'python -m scripts.score_tecnico <ticker>',
+          nodes: ['n-scripts', 'n-db'],
+          edges: ['e-api-scripts', 'e-scripts-db'],
+          labels: ['lbl-read']
+        },
+        {
+          title: '4 · indicators.py computa el score',
+          desc: 'RSI(14) / MACD(12,26,9) / SMA(20,50) → score 0-100 → señal {compra/venta/hold} + confianza.',
+          chip: 'score = 0.40·RSI + 0.30·Tendencia + 0.30·MACD',
+          nodes: ['n-scripts'],
+          edges: []
+        },
+        {
+          title: '5 · Persiste el Analisis',
+          desc: 'El backend persiste el Analisis en SQLite con la FK activo_id. Único responsable de escribir: CRUD.',
+          chip: 'INSERT analisis (activo_id FK, score)',
+          nodes: ['n-api', 'n-db'],
+          edges: ['e-api-db']
+        },
+        {
+          title: '6 · 201 → el frontend pinta el badge',
+          desc: 'La API responde 201 con el análisis. El frontend muta state y render() pinta el badge en la card.',
+          chip: '201 Analisis → state → render() → "Técnico: compra · 72"',
+          nodes: ['n-api', 'n-frontend'],
+          edges: ['e-api-client']
+        }
+      ];
+
+      const ALL_NODES = ['n-frontend', 'n-skill', 'n-api', 'n-scripts', 'n-db'];
+      const ALL_EDGES = ['e-c1', 'e-c2', 'e-api-scripts', 'e-scripts-db', 'e-api-db', 'e-api-client'];
+      const ALL_LABELS = ['lbl-read'];
+
+      let archStep = 0;
+      const stepTitle = document.getElementById('step-title');
+      const stepDesc = document.getElementById('step-desc');
+      const stepChip = document.getElementById('step-chip');
+      const stepCounter = document.getElementById('step-counter');
+      const stepDots = document.getElementById('step-dots');
+      const archPrev = document.getElementById('arch-prev');
+      const archNext = document.getElementById('arch-next');
+      const apiNote = document.getElementById('api-note');
+
+      archSteps.forEach((_, i) => {
+        const d = document.createElement('div');
+        d.className = 'step-dot';
+        stepDots.appendChild(d);
+      });
+
+      function setArchStep(i) {
+        archStep = Math.max(0, Math.min(archSteps.length - 1, i));
+        const st = archSteps[archStep];
+
+        ALL_NODES.forEach(id => document.getElementById(id).classList.toggle('on', st.nodes.includes(id)));
+        ALL_EDGES.forEach(id => document.getElementById(id).classList.toggle('on', st.edges.includes(id)));
+        ALL_LABELS.forEach(id => document.getElementById(id).classList.toggle('on', (st.labels || []).includes(id)));
+        apiNote.classList.toggle('on', !!st.note);
+
+        stepTitle.textContent = st.title;
+        stepDesc.textContent = st.desc;
+        stepChip.textContent = st.chip;
+        stepCounter.textContent = `Paso ${archStep + 1} / ${archSteps.length}`;
+        Array.from(stepDots.children).forEach((dot, idx) => dot.classList.toggle('on', idx === archStep));
+
+        archPrev.disabled = archStep === 0;
+        archNext.disabled = archStep === archSteps.length - 1;
+      }
+
+      archPrev.addEventListener('click', () => setArchStep(archStep - 1));
+      archNext.addEventListener('click', () => setArchStep(archStep + 1));
+
+      /* ---------- Teclado: en Arquitectura recorre pasos, luego cambia slide ---------- */
+      function onRight() {
+        if (current === ARCH_SLIDE && archStep < archSteps.length - 1) setArchStep(archStep + 1);
+        else nextSlide();
+      }
+      function onLeft() {
+        if (current === ARCH_SLIDE && archStep > 0) setArchStep(archStep - 1);
+        else prevSlide();
+      }
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); onRight(); }
+        else if (e.key === 'ArrowLeft' || e.key === 'Backspace') { e.preventDefault(); onLeft(); }
+      });
+
+      setArchStep(0);
+      updateSlides();
+    });
+  </script>
+</body>
+</html>
