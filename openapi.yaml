@@ -117,6 +117,86 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /mercado/catalogo:
+    get:
+      summary: Catálogo de CEDEARs para el autocompletado (lee data/cedears.json)
+      responses:
+        '200':
+          description: Lista de CEDEARs (ticker, nombre, tipo, mercado)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CatalogoCedear' }
+        '500':
+          description: No se pudo leer el catálogo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /mercado/cedears:
+    get:
+      summary: Snapshot de mercado de los CEDEARs (lee la DB)
+      responses:
+        '200':
+          description: Filas de mercado y timestamp de última actualización
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MercadoSnapshot' }
+  /mercado/actualizar:
+    post:
+      summary: Dispara la descarga de datos de mercado y los persiste
+      responses:
+        '200':
+          description: Resumen de la actualización
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActualizarResultado' }
+        '500':
+          description: Falló la descarga o la persistencia
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /mercado/{ticker}/fundamentales:
+    get:
+      summary: Fila de mercado (datos + fundamentales) de un ticker, desde la DB
+      parameters:
+        - { name: ticker, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Registro del ticker en mercado_cedears
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MercadoCedear' }
+        '404':
+          description: El ticker no está en el snapshot de mercado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /mercado/{ticker}/historico:
+    get:
+      summary: OHLC e indicadores históricos para el gráfico de detalle
+      parameters:
+        - { name: ticker, in: path, required: true, schema: { type: string } }
+        - name: periodo
+          in: query
+          required: false
+          schema: { type: string, enum: [1m, 3m, 6m, 1y], default: 3m }
+      responses:
+        '200':
+          description: OHLC + series e indicadores
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Historico' }
+        '400':
+          description: Período inválido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Falló la obtención de datos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 components:
   schemas:
     ActivoCreate:
@@ -163,6 +243,86 @@ components:
             id: { type: integer }
             activo_id: { type: integer }
             created_at: { type: string, format: date-time }
+    CatalogoCedear:
+      type: object
+      required: [ticker_byma, ticker_us, nombre, mercado, tipo]
+      properties:
+        ticker_byma: { type: string }
+        ticker_us:   { type: string }
+        nombre:      { type: string }
+        mercado:     { type: string, enum: [BYMA, NYSE, NASDAQ] }
+        tipo:        { type: string, enum: [accion, ON] }
+    MercadoCedear:
+      type: object
+      required: [ticker_byma, ticker_us, nombre]
+      properties:
+        ticker_byma:  { type: string }
+        ticker_us:    { type: string }
+        nombre:       { type: string }
+        precio_usd:   { type: [number, 'null'] }
+        var_pct:      { type: [number, 'null'] }
+        volumen:      { type: [integer, 'null'] }
+        rsi:          { type: [number, 'null'] }
+        senal:        { type: [string, 'null'], enum: [compra, venta, hold, null] }
+        pe:           { type: [number, 'null'] }
+        eps:          { type: [number, 'null'] }
+        market_cap:   { type: [integer, 'null'] }
+        w52_high:     { type: [number, 'null'] }
+        w52_low:      { type: [number, 'null'] }
+        free_cash_flow: { type: [number, 'null'] }
+        margen_neto:    { type: [number, 'null'] }
+        roe:            { type: [number, 'null'] }
+        price_to_book:  { type: [number, 'null'] }
+        dividend_yield: { type: [number, 'null'] }
+        actualizado_en: { type: [string, 'null'], format: date-time }
+    MercadoSnapshot:
+      type: object
+      required: [cedears, actualizado_en]
+      properties:
+        cedears:
+          type: array
+          items: { $ref: '#/components/schemas/MercadoCedear' }
+        actualizado_en: { type: [string, 'null'], format: date-time }
+    ActualizarResultado:
+      type: object
+      required: [actualizados, actualizado_en]
+      properties:
+        actualizados:   { type: integer }
+        actualizado_en: { type: string, format: date-time }
+    Historico:
+      type: object
+      required: [ohlc, series, indicadores]
+      properties:
+        ohlc:
+          type: array
+          items:
+            type: object
+            required: [time, open, high, low, close]
+            properties:
+              time:  { type: string }
+              open:  { type: number }
+              high:  { type: number }
+              low:   { type: number }
+              close: { type: number }
+        series:
+          type: object
+          properties:
+            sma20:  { type: array, items: { type: [number, 'null'] } }
+            sma50:  { type: array, items: { type: [number, 'null'] } }
+            rsi:    { type: array, items: { type: [number, 'null'] } }
+            macd:   { type: array, items: { type: [number, 'null'] } }
+            signal: { type: array, items: { type: [number, 'null'] } }
+            hist:   { type: array, items: { type: [number, 'null'] } }
+        indicadores:
+          type: object
+          properties:
+            rsi:       { type: [number, 'null'] }
+            macd:      { type: [number, 'null'] }
+            signal:    { type: [number, 'null'] }
+            sma20:     { type: [number, 'null'] }
+            sma50:     { type: [number, 'null'] }
+            senal:     { type: [string, 'null'], enum: [compra, venta, hold, null] }
+            confianza: { type: [number, 'null'] }
     Error:
       type: object
       required: [message]
