@@ -15,7 +15,7 @@
   { "ticker_byma": "MA",    "ticker_us": "MA",    "nombre": "Mastercard Inc.",            "mercado": "NYSE",   "tipo": "accion" },
   { "ticker_byma": "KO",    "ticker_us": "KO",    "nombre": "Coca-Cola Co.",              "mercado": "NYSE",   "tipo": "accion" },
   { "ticker_byma": "PEP",   "ticker_us": "PEP",   "nombre": "PepsiCo Inc.",               "mercado": "NASDAQ", "tipo": "accion" },
-  { "ticker_byma": "MCD",   "ticker_us": "MCD",   "nombre": "McDonald's Corp.",           "mercado": "NYSE",   "tipo": "accion" },
+  { "ticker_byma": "COST",  "ticker_us": "COST",  "nombre": "Costco Wholesale Corp.",     "mercado": "NASDAQ", "tipo": "accion" },
   { "ticker_byma": "DIS",   "ticker_us": "DIS",   "nombre": "Walt Disney Co.",            "mercado": "NYSE",   "tipo": "accion" },
   { "ticker_byma": "NKE",   "ticker_us": "NKE",   "nombre": "Nike Inc.",                  "mercado": "NYSE",   "tipo": "accion" },
   { "ticker_byma": "WMT",   "ticker_us": "WMT",   "nombre": "Walmart Inc.",               "mercado": "NYSE",   "tipo": "accion" },
