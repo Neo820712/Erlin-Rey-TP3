@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from backend.database import create_db, engine
 from backend.models import Activo, Analisis
 from scripts.indicators import analizar
-from scripts.prices import obtener_precios
+from scripts.prices import obtener_ohlc
 
 ACTIVOS = [
     {"ticker": "AAPL", "nombre": "Apple Inc.", "tipo": "accion", "mercado": "NASDAQ"},
@@ -14,9 +14,9 @@ ACTIVOS = [
 ]
 
 HARDCODE = {
-    "AAPL": {"senal": "compra", "confianza": 0.67, "resumen": "RSI 45.0 (hold), MACD positivo (compra), SMA20 > SMA50 (compra) -> compra por mayoria"},
-    "GOOGL": {"senal": "hold", "confianza": 0.33, "resumen": "RSI 55.0 (hold), MACD ~0 (hold), SMA20 ~ SMA50 (hold) -> hold"},
-    "MSFT": {"senal": "venta", "confianza": 0.67, "resumen": "RSI 72.0 (venta), MACD negativo (venta), SMA20 < SMA50 (venta) -> venta por mayoria"},
+    "AAPL": {"senal": "compra", "confianza": 0.6, "score": 80.0, "resumen": "Score 80/100 (compra). Estructura alcista de corto."},
+    "GOOGL": {"senal": "hold", "confianza": 0.0, "score": 50.0, "resumen": "Score 50/100 (hold). Sin sesgo claro."},
+    "MSFT": {"senal": "venta", "confianza": 0.6, "score": 20.0, "resumen": "Score 20/100 (venta). RSI alto y tendencia debil."},
 }
 
 
@@ -25,14 +25,19 @@ def _ahora_iso() -> str:
 
 
 def _analisis_de(ticker: str) -> dict:
-    close, procedencia, _ = obtener_precios(ticker)
+    df, procedencia, _ = obtener_ohlc(ticker)
     if procedencia == "none":
         return HARDCODE[ticker]
     try:
-        res = analizar(close)
+        res = analizar(df["Close"])
     except ValueError:
         return HARDCODE[ticker]
-    return {"senal": res["senal"], "confianza": res["confianza"], "resumen": res["resumen"]}
+    return {
+        "senal": res["senal"],
+        "confianza": res["confianza"],
+        "score": res["score"],
+        "resumen": res["resumen"],
+    }
 
 
 def seed() -> None:
@@ -55,6 +60,7 @@ def seed() -> None:
                 senal=a["senal"],
                 confianza=a["confianza"],
                 resumen=a["resumen"],
+                score=a.get("score"),
                 created_at=_ahora_iso(),
             )
             session.add(analisis)
