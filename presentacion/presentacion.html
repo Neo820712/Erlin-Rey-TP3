@@ -532,16 +532,71 @@
       </div>
     </div>
 
-    <!-- SLIDE 3: DEMO -->
+    <!-- SLIDE 3: CONFIGURACIONES CLAUDE CODE -->
     <div class="slide" id="slide-3">
+      <div class="slide-header">
+        <div class="slide-tag">Configuraciones de Claude Code</div>
+        <h2 class="slide-title">Qué gobierna al agente, y en qué nivel</h2>
+      </div>
+      <div class="grid-4">
+        <div class="card cfg-card" style="border-top-color: var(--intel-cyan);">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span class="cfg-file">CLAUDE.md</span>
+            <span class="level-pill lvl-context">Context</span>
+          </div>
+          <div class="cfg-role">Contexto jerárquico cargado por sesión: stack, estructura del repo y las reglas de arquitectura invariantes.</div>
+        </div>
+        <div class="card cfg-card" style="border-top-color: var(--intel-cyan);">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span class="cfg-file">.claude/rules/</span>
+            <span class="level-pill lvl-context">Context</span>
+          </div>
+          <div class="cfg-role">Reglas inyectadas por <code>glob</code>: <code>backend.md</code> al tocar <code>backend/**</code>, <code>frontend.md</code> en <code>frontend/**</code>. El contexto correcto, solo cuando aplica.</div>
+        </div>
+        <div class="card cfg-card">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span class="cfg-file">settings.json</span>
+            <span class="level-pill lvl-harness">Harness</span>
+          </div>
+          <div class="cfg-role"><code>allow</code> / <code>deny</code> / <code>env</code>: límite determinístico del runtime. Habilita pytest/uvicorn, bloquea <code>rm -rf</code> y <code>push --force</code>, fija <code>PYTHONPATH</code>.</div>
+        </div>
+        <div class="card cfg-card">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span class="cfg-file">skill /tecnico</span>
+            <span class="level-pill lvl-harness">Harness</span>
+          </div>
+          <div class="cfg-role">Slash command propio que materializa el ciclo <strong>ReAct</strong> (think → act → observe) y delega el cálculo a <code>scripts/score_tecnico.py</code>.</div>
+        </div>
+      </div>
+      <div class="grid-2" style="align-items:stretch;">
+        <div class="card" style="border-top-color: var(--intel-deep-blue);">
+          <div class="card-title">El límite determinístico vive fuera del prompt <span class="badge badge-dark">settings.json</span></div>
+          <pre class="file-snip" style="background:#0c0c0c; color:#e5e7eb; font-size:0.72rem; line-height:1.45; padding:0.6rem 0.75rem; margin:0; white-space:pre; overflow:hidden; border-radius:4px;"><span style="color:#60a5fa;">"allow"</span>: [ <span style="color:#34d399;">"Bash(uv run pytest *)"</span>,
+           <span style="color:#34d399;">"Bash(uvicorn backend.main:app *)"</span> ],
+<span style="color:#60a5fa;">"deny"</span>:  [ <span style="color:#f87171;">"Bash(rm -rf *)"</span>,
+           <span style="color:#f87171;">"Bash(git push --force*)"</span> ],
+<span style="color:#60a5fa;">"env"</span>:   { <span style="color:#34d399;">"CORS_ORIGINS"</span>: <span style="color:#fbbf24;">"http://localhost:3000"</span>,
+           <span style="color:#34d399;">"PYTHONPATH"</span>: <span style="color:#fbbf24;">"."</span> }</pre>
+        </div>
+        <div class="card" style="border-top-color: var(--intel-blue); display:flex; flex-direction:column; justify-content:center;">
+          <div class="card-title">Tres niveles de ingeniería del agente</div>
+          <p style="margin-bottom:0.5rem;"><span class="level-pill lvl-prompt">Prompt</span> &nbsp;diseño del input — registrado en <code>prompts.md</code>.</p>
+          <p style="margin-bottom:0.5rem;"><span class="level-pill lvl-context">Context</span> &nbsp;qué ve el modelo — <code>CLAUDE.md</code> + <code>rules/</code> por glob.</p>
+          <p><span class="level-pill lvl-harness">Harness</span> &nbsp;runtime: permisos, env y tools — <code>settings.json</code> + skill <code>/tecnico</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: DEMO -->
+    <div class="slide" id="slide-4">
       <div class="demo-hero">
         <div class="demo-word">DEM<span>O</span></div>
         <div class="demo-sub">Dashboard en vivo — <b>start.bat</b> → <b>localhost:3000</b></div>
       </div>
     </div>
 
-    <!-- SLIDE 4: FLUJO SUPERPOWERS -->
-    <div class="slide" id="slide-4">
+    <!-- SLIDE 5: FLUJO SUPERPOWERS -->
+    <div class="slide" id="slide-5">
       <div class="slide-header">
         <div class="slide-tag">Proceso de desarrollo · Superpowers</div>
         <h2 class="slide-title">De la idea al merge: un pipeline con artefactos versionados</h2>
@@ -616,61 +671,6 @@
         <div class="card" style="border-top-color: var(--intel-deep-blue);">
           <div class="card-title">Verify + PR <span class="badge badge-dark">Cierre</span></div>
           <p>Nada se da por hecho sin evidencia: <code>uv run pytest</code> en verde antes de cerrar. El branch <code>feature/…</code> se integra a <code>main</code> por PR (GitHub Flow).</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- SLIDE 5: CONFIGURACIONES CLAUDE CODE -->
-    <div class="slide" id="slide-5">
-      <div class="slide-header">
-        <div class="slide-tag">Configuraciones de Claude Code</div>
-        <h2 class="slide-title">Qué gobierna al agente, y en qué nivel</h2>
-      </div>
-      <div class="grid-4">
-        <div class="card cfg-card" style="border-top-color: var(--intel-cyan);">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <span class="cfg-file">CLAUDE.md</span>
-            <span class="level-pill lvl-context">Context</span>
-          </div>
-          <div class="cfg-role">Contexto jerárquico cargado por sesión: stack, estructura del repo y las reglas de arquitectura invariantes.</div>
-        </div>
-        <div class="card cfg-card" style="border-top-color: var(--intel-cyan);">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <span class="cfg-file">.claude/rules/</span>
-            <span class="level-pill lvl-context">Context</span>
-          </div>
-          <div class="cfg-role">Reglas inyectadas por <code>glob</code>: <code>backend.md</code> al tocar <code>backend/**</code>, <code>frontend.md</code> en <code>frontend/**</code>. El contexto correcto, solo cuando aplica.</div>
-        </div>
-        <div class="card cfg-card">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <span class="cfg-file">settings.json</span>
-            <span class="level-pill lvl-harness">Harness</span>
-          </div>
-          <div class="cfg-role"><code>allow</code> / <code>deny</code> / <code>env</code>: límite determinístico del runtime. Habilita pytest/uvicorn, bloquea <code>rm -rf</code> y <code>push --force</code>, fija <code>PYTHONPATH</code>.</div>
-        </div>
-        <div class="card cfg-card">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <span class="cfg-file">skill /tecnico</span>
-            <span class="level-pill lvl-harness">Harness</span>
-          </div>
-          <div class="cfg-role">Slash command propio que materializa el ciclo <strong>ReAct</strong> (think → act → observe) y delega el cálculo a <code>scripts/score_tecnico.py</code>.</div>
-        </div>
-      </div>
-      <div class="grid-2" style="align-items:stretch;">
-        <div class="card" style="border-top-color: var(--intel-deep-blue);">
-          <div class="card-title">El límite determinístico vive fuera del prompt <span class="badge badge-dark">settings.json</span></div>
-          <pre class="file-snip" style="background:#0c0c0c; color:#e5e7eb; font-size:0.72rem; line-height:1.45; padding:0.6rem 0.75rem; margin:0; white-space:pre; overflow:hidden; border-radius:4px;"><span style="color:#60a5fa;">"allow"</span>: [ <span style="color:#34d399;">"Bash(uv run pytest *)"</span>,
-           <span style="color:#34d399;">"Bash(uvicorn backend.main:app *)"</span> ],
-<span style="color:#60a5fa;">"deny"</span>:  [ <span style="color:#f87171;">"Bash(rm -rf *)"</span>,
-           <span style="color:#f87171;">"Bash(git push --force*)"</span> ],
-<span style="color:#60a5fa;">"env"</span>:   { <span style="color:#34d399;">"CORS_ORIGINS"</span>: <span style="color:#fbbf24;">"http://localhost:3000"</span>,
-           <span style="color:#34d399;">"PYTHONPATH"</span>: <span style="color:#fbbf24;">"."</span> }</pre>
-        </div>
-        <div class="card" style="border-top-color: var(--intel-blue); display:flex; flex-direction:column; justify-content:center;">
-          <div class="card-title">Tres niveles de ingeniería del agente</div>
-          <p style="margin-bottom:0.5rem;"><span class="level-pill lvl-prompt">Prompt</span> &nbsp;diseño del input — registrado en <code>prompts.md</code>.</p>
-          <p style="margin-bottom:0.5rem;"><span class="level-pill lvl-context">Context</span> &nbsp;qué ve el modelo — <code>CLAUDE.md</code> + <code>rules/</code> por glob.</p>
-          <p><span class="level-pill lvl-harness">Harness</span> &nbsp;runtime: permisos, env y tools — <code>settings.json</code> + skill <code>/tecnico</code>.</p>
         </div>
       </div>
     </div>
